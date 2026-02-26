@@ -1,0 +1,226 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Enums
+enum BedStatus {
+  VACANT
+  OCCUPIED
+  CLEANING
+  MAINTENANCE
+}
+
+enum Sex {
+  MALE
+  FEMALE
+  OTHER
+}
+
+// ============================================
+// MODEL: Doctor
+// ============================================
+model Doctor {
+  id       Int    @id @default(autoincrement())
+  user_id  String @unique
+  name     String
+  crm      String
+  position String
+
+  // Relações
+  clinical_evolutions ClinicalEvolution[]
+  draft_evolutions    DraftEvolution[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([user_id])
+  @@map("doctors")
+}
+
+// ============================================
+// MODEL: Patient (NOVO - Essencial para o histórico)
+// ============================================
+model Patient {
+  id             Int       @id @default(autoincrement())
+  name           String
+  birth_date     DateTime?
+  height         Int?
+  weight         Float? 
+  gender         Sex?
+  commentary     String?
+  arrival_date   DateTime?
+  admission_date DateTime  @default(now())
+  discharge_date DateTime? 
+  
+  // Vínculo com Leito (atual)
+  current_bed Bed?
+
+  // Histórico
+  evolutions ClinicalEvolution[]
+  drafts     DraftEvolution[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("patients")
+}
+
+// ============================================
+// MODEL: Bed
+// ============================================
+model Bed {
+  id         Int     @id @default(autoincrement())
+  bed_number Int     @unique
+  label      String? // Ex: "Leito 01"
+  type       String? // Ex: "UTI Geral"
+
+  status BedStatus @default(VACANT)
+
+  // Quem está ocupando agora? (Relacionamento 1:1 com Patient)
+  current_patient_id Int?     @unique
+  current_patient    Patient? @relation(fields: [current_patient_id], references: [id])
+
+  // Histórico de evoluções feitas NESTE leito físico
+  clinical_evolutions ClinicalEvolution[]
+  draft_evolutions    DraftEvolution[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("beds")
+}
+
+// ============================================
+// MODEL: ClinicalEvolution
+// ============================================
+model ClinicalEvolution {
+  id Int @id @default(autoincrement())
+
+  // Vínculos obrigatórios para rastreabilidade
+  patient_id Int
+  patient    Patient @relation(fields: [patient_id], references: [id])
+  patient_sex Sex?     
+
+  bed_id Int
+  bed    Bed @relation(fields: [bed_id], references: [id])
+
+  doctor_id Int
+  doctor    Doctor @relation(fields: [doctor_id], references: [id])
+
+  // DADOS CLÍNICOS (Snapshot do momento da evolução)
+
+  // Geral
+  patient_weight Float?
+  patient_height Float?
+
+  // Respiratório
+  airway_type             String? // fisiologica, tot, tqt
+  respiratory_support     Json? // JSON string dos suportes selecionados
+  respiratory_spo2        String?
+  respiratory_sao2        String?
+  respiratory_observation String?
+  respiratory_chest_xray  String?
+
+  // Neurológico
+  neurologic_sedation    Json? // Drogas
+  neurologic_scales      String? // RASS, Glasgow
+  neurologic_pupils      String?
+  neurologic_bis         String?
+  neurologic_pic         String?
+  neurologic_enteral     String?
+  neurologic_observation String?
+
+  // Hemodinâmica
+  hemodynamic_drugs       Json? // Drogas vasoativas
+  hemodynamic_pam         String?
+  hemodynamic_fc          String?
+  hemodynamic_rhythm      String?
+  hemodynamic_enteral     String?
+  hemodynamic_tec         String?
+  hemodynamic_lactate     String?
+  hemodynamic_svco2       String?
+  hemodynamic_gapco2      String?
+  hemodynamic_observation String?
+
+  // Renal/Metabólico
+  renal_diuresis    String?
+  renal_diuretics   String?
+  renal_balance     String?
+  renal_dialysis    String?
+  renal_glycemia    String?
+  renal_insulin     String?
+  renal_observation String?
+
+  // Nutricional
+  nutrition_support     String? // Oral, Enteral, Parenteral
+  nutrition_residue     String?
+  nutrition_prokinetics String?
+  nutrition_evacuation  String?
+  nutrition_abdomen     String?
+  nutrition_surgical    Boolean? @default(false)
+  nutrition_drains      String?
+  nutrition_wound       String?
+
+  // Hematoinfeccioso
+  hemato_antibiotics Json?
+  hemato_cultures    Json?
+  hemato_temperature String?
+  hemato_biomarkers  String?
+  hemato_corticoid   String?
+  hemato_observation String?
+
+  // Profilaxias
+  prophylaxis_tev    String?
+  prophylaxis_ibp    String?
+  prophylaxis_others String?
+
+  // Texto Gerado Final (Opcional, para consulta rápida)
+  generated_text String? @db.Text
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Índices para performance (buscar última evolução do paciente)
+  @@index([patient_id, created_at(sort: Desc)])
+  @@index([bed_id])
+  @@index([doctor_id])
+  @@map("clinical_evolutions")
+}
+
+// ============================================
+// MODEL: DraftEvolution (Rascunho)
+// ============================================
+model DraftEvolution {
+  id Int @id @default(autoincrement())
+
+  bed_id Int
+  bed    Bed @relation(fields: [bed_id], references: [id])
+
+  doctor_id Int
+  doctor    Doctor @relation(fields: [doctor_id], references: [id])
+
+  // Paciente é opcional no rascunho (pode estar criando antes de admitir, teoricamente)
+  patient_id Int?
+  patient    Patient? @relation(fields: [patient_id], references: [id])
+
+  // JSON Gigante com o estado do formulário React (formData)
+  // Isso facilita muito salvar/restaurar o rascunho sem mapear campo por campo
+  form_data Json?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@unique([bed_id, doctor_id]) // Um médico só tem 1 rascunho por leito
+  @@map("draft_evolutions")
+}
