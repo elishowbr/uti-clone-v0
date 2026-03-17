@@ -224,3 +224,19 @@ model DraftEvolution {
   @@unique([bed_id, doctor_id]) // Um médico só tem 1 rascunho por leito
   @@map("draft_evolutions")
 }
+
+// ============================================
+// MODEL: User (Autenticação)
+// ============================================
+model User {
+  id         Int      @id @default(autoincrement())
+  name       String
+  email      String   @unique
+  password   String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("users")
+}
+
