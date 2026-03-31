@@ -115,7 +115,7 @@ describe('generateEvolutionText', () => {
     };
     const data = makeFullData({
       neurological: {
-        sedationDrugs: [{ flow: 20, dose: 2.8, drug }],
+        sedationDrugs: [{ flow: 20, dose: 2.8, patientWeight: 70, drug }],
         neurologicalScales: 'RASS: -2 | GCS: 8T',
         pupils: 'Isocóricas 3mm fotorreagentes',
         bis: '45',
@@ -148,7 +148,7 @@ describe('generateEvolutionText', () => {
     };
     const data = makeFullData({
       hemodynamics: {
-        vasoactiveDrugs: [{ flow: 5, dose: 0.1, drug }],
+        vasoactiveDrugs: [{ flow: 5, dose: 0.1, patientWeight: 70, drug }],
         pam: '65',
         fc: '90',
         rhythm: 'Sinusal',
@@ -214,7 +214,7 @@ describe('generateEvolutionText', () => {
 
     const data = makeFullData({
       hemato: {
-        antibiotics: [{ id: '1', name: 'Ceftriaxona', startDate: new Date('2026-03-23') }],
+        antibiotics: [{ id: '1', name: 'Ceftriaxona', route: 'EV', startDate: '2026-03-23', observations: '' }],
         cultures: [],
         temperature: '38.5',
         biomarkers: 'PCR: 12',
@@ -233,7 +233,7 @@ describe('generateEvolutionText', () => {
     const data = makeFullData({
       hemato: {
         antibiotics: [],
-        cultures: [{ id: '1', material: 'Sangue', sensitivity: 'Sensível' }],
+        cultures: [{ id: '1', date: '2026-03-31', material: 'Sangue', sensitivity: 'Sensível' }],
         temperature: '',
         biomarkers: '',
         corticoids: '',

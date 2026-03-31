@@ -5,8 +5,8 @@ import HematoinfectiousForm, { HematoinfectiousData } from '../app/dashboard/[be
 
 describe('HematoinfectiousForm Component', () => {
   const mockData: HematoinfectiousData = {
-    antibiotics: [{ id: '1', name: 'Ceftriaxona', startDate: new Date('2026-03-20') }],
-    cultures: [{ id: '1', material: 'Sangue', sensitivity: 'Sensível' }],
+    antibiotics: [{ id: '1', name: 'Ceftriaxona', route: 'EV', startDate: '2026-03-20', observations: '' }],
+    cultures: [{ id: '1', date: '2026-03-20', material: 'Sangue', sensitivity: 'Sensível' }],
     temperature: '38.5',
     biomarkers: 'PCR: 8.5 mg/dL',
     corticoids: 'Dexametasona 10mg',
@@ -118,8 +118,8 @@ describe('HematoinfectiousForm Component', () => {
       const multiAbx: HematoinfectiousData = {
         ...mockData,
         antibiotics: [
-          { id: '1', name: 'Ceftriaxona', startDate: new Date('2026-03-20') },
-          { id: '2', name: 'Vancomicina', startDate: new Date('2026-03-25') },
+          { id: '1', name: 'Ceftriaxona', route: 'EV', startDate: '2026-03-20', observations: '' },
+          { id: '2', name: 'Vancomicina', route: 'EV', startDate: '2026-03-25', observations: 'Monitorar níveis' },
         ],
       };
       render(<HematoinfectiousForm data={multiAbx} onChange={mockOnChange} />);
@@ -130,7 +130,7 @@ describe('HematoinfectiousForm Component', () => {
     it('should format antibiotic with D0 when start date is today', () => {
       const todayAbx: HematoinfectiousData = {
         ...mockData,
-        antibiotics: [{ id: '1', name: 'Meropenem', startDate: new Date('2026-03-31') }],
+        antibiotics: [{ id: '1', name: 'Meropenem', route: 'EV', startDate: '2026-03-31', observations: '' }],
         cultures: [],
       };
       render(<HematoinfectiousForm data={todayAbx} onChange={mockOnChange} />);
@@ -143,7 +143,7 @@ describe('HematoinfectiousForm Component', () => {
       const pendingCulture: HematoinfectiousData = {
         ...mockData,
         antibiotics: [],
-        cultures: [{ id: '1', material: 'Urina', sensitivity: '' }],
+        cultures: [{ id: '1', date: '2026-03-20', material: 'Urina', sensitivity: '' }],
       };
       render(<HematoinfectiousForm data={pendingCulture} onChange={mockOnChange} />);
       expect(screen.getByText(/Urina.*Pendente/)).toBeInTheDocument();
@@ -153,7 +153,7 @@ describe('HematoinfectiousForm Component', () => {
       const noMaterial: HematoinfectiousData = {
         ...mockData,
         antibiotics: [],
-        cultures: [{ id: '1', material: '', sensitivity: 'Sensível' }],
+        cultures: [{ id: '1', date: '2026-03-20', material: '', sensitivity: 'Sensível' }],
       };
       render(<HematoinfectiousForm data={noMaterial} onChange={mockOnChange} />);
       // Preview should not include cultures section without material

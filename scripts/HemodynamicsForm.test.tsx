@@ -118,7 +118,7 @@ describe('HemodynamicsForm Component', () => {
       };
       const dataWithDrug: HemodynamicsData = {
         ...mockData,
-        vasoactiveDrugs: [{ flow: 5, dose: 0.1, drug }],
+        vasoactiveDrugs: [{ flow: 5, dose: 0.1, patientWeight, drug }],
       };
       render(<HemodynamicsForm data={dataWithDrug} onChange={mockOnChange} patientWeight={patientWeight} />);
       expect(screen.getByText(/Drogas Vasoativas:.*Noradrenalina/)).toBeInTheDocument();
@@ -135,7 +135,7 @@ describe('HemodynamicsForm Component', () => {
       };
       const dataWithZeroFlow: HemodynamicsData = {
         ...mockData,
-        vasoactiveDrugs: [{ flow: 0, dose: 0, drug }],
+        vasoactiveDrugs: [{ flow: 0, dose: 0, patientWeight, drug }],
         pam: '',
         fc: '',
         rhythm: '',
