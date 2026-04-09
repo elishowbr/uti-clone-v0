@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage --coverageReporters=text --coverageReporters=html --coverageReporters=json",
+    "test:report": "jest --coverage --coverageReporters=text-summary --coverageReporters=html && echo \"📊 Relatório aberto em: coverage/index.html\"",
+    "test:json": "jest --coverage --coverageReporters=json && echo \"📋 Relatório JSON: coverage/coverage-final.json\""
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.1.0",
@@ -20,15 +25,25 @@
     "react": "19.2.1",
     "react-dom": "19.2.1"
   },
+  "engines": {
+    "node": ">=22.22.2"
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
+    "@testing-library/jest-dom": "^6.1.5",
+    "@testing-library/react": "^15.0.0",
+    "@testing-library/user-event": "^14.5.1",
+    "@types/jest": "^29.5.10",
+    "@types/node": "^22",
     "@types/pg": "^8.16.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.0.10",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
     "prisma": "^7.1.0",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
