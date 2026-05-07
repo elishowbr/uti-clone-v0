@@ -1,13 +1,21 @@
 import { SignJWT, jwtVerify } from "jose";
+import type { StaffRole } from "./mockUsers";
 import { cookies } from "next/headers";
 
 const secretKey = process.env.JWT_SECRET || "fallback-secret-for-development-only-change-in-production";
 const encodedKey = new TextEncoder().encode(secretKey);
 
-export async function createSession(userId: string) {
+/**
+ * Creates an authenticated session cookie containing the user ID and,
+ * optionally, their staff role for role-based routing.
+ */
+export async function createSession(userId: string, role?: StaffRole) {
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-  
-  const session = await new SignJWT({ userId, expiresAt })
+
+  const payload: Record<string, unknown> = { userId, expiresAt };
+  if (role) payload.role = role;
+
+  const session = await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("24h")
