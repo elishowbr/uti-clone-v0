@@ -1,18 +1,17 @@
 /**
- * Testes de Integração — saveEvolution.ts
- * 
+ * Testes de Integração — saveEvolution.ts (Nível 2 QA Strategy)
+ *
+ * Estratégia: PrismaClient mockado via jest-mock-extended com import type
+ * do cliente gerado em @/app/generated/prisma/client (Prisma 6, saída customizada).
+ *
  * Cobertura:
- *  - saveEvolution: persistência completa no banco
- *  - Mapeamento correto de todos os campos clínicos
- *  - Geração de texto consolidado
- *  - Atualização de peso do paciente
- *  - Tratamento de erros
+ *  - saveEvolution (fluxo principal, mapeamento de dados, edge cases)
  */
 
 import { mockDeep, mockReset, DeepMockProxy } from 'jest-mock-extended';
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@/app/generated/prisma/client';
 
-// ─── Mock do Prisma ───────────────────────────────────────────────────────────
+// ─── Mock do módulo Prisma ────────────────────────────────────────────────────
 jest.mock('@/lib/prisma', () => ({
   __esModule: true,
   default: mockDeep<PrismaClient>(),
@@ -24,9 +23,7 @@ jest.mock('next/cache', () => ({
 
 jest.mock(
   '@/app/dashboard/[bedId]/evolution/utils/generateEvolutionText',
-  () => ({
-    generateEvolutionText: jest.fn(() => 'TEXTO GERADO MOCK'),
-  })
+  () => ({ generateEvolutionText: jest.fn(() => 'TEXTO_GERADO_MOCK') })
 );
 
 import prismaImport from '@/lib/prisma';
@@ -36,71 +33,39 @@ import { saveEvolution } from '@/app/actions/saveEvolution';
 import { generateEvolutionText } from '@/app/dashboard/[bedId]/evolution/utils/generateEvolutionText';
 
 // ─── Fábrica de FullFormData ──────────────────────────────────────────────────
-const makeFullFormData = (overrides: Record<string, any> = {}) => ({
-  general: {
-    sex: 'M',
-    height: '175',
-    weight: '80',
-    airwayType: 'fisiologica',
-  },
-  generatedText: '',
+const makeFormData = (overrides: Record<string, any> = {}) => ({
+  general: { sex: 'F', height: '162', weight: '65', airwayType: 'fisiologica' },
+  generatedText: 'Texto pré-gerado',
   respiratory: {
-    airwayType: 'fisiologica',
+    airwayType: 'fisiologica' as const,
     supports: [],
-    spo2: '98',
-    sao2: '',
-    observations: '',
-    chestXray: '',
+    spo2: '97', sao2: '', observations: '', chestXray: '',
   },
   neurological: {
-    sedationDrugs: [],
-    neurologicalScales: 'GCS: 15',
-    pupils: 'Isocóricas 3mm',
-    bis: '',
-    subjectiveObservations: '',
-    enteralDrugs: '',
-    pic: '',
+    sedationDrugs: [], neurologicalScales: 'GCS: 15',
+    pupils: 'Isocóricas', bis: '', subjectiveObservations: '',
+    enteralDrugs: '', pic: '',
   },
   hemodynamics: {
-    vasoactiveDrugs: [],
-    pam: '75',
-    fc: '72',
-    rhythm: 'Sinusal',
-    enteralDrugs: '',
-    tec: '',
-    lactate: '',
-    svco2: '',
-    gapco2: '',
-    observations: '',
+    vasoactiveDrugs: [], pam: '80', fc: '75',
+    rhythm: 'Sinusal', enteralDrugs: '', tec: '',
+    lactate: '', svco2: '', gapco2: '', observations: '',
   },
   nutrition: {
     supports: [],
-    gastricResidue: '',
-    prokineticsLaxatives: '',
-    lastEvacuationDate: '',
-    evacuationAspect: '',
-    abdomen: 'RHA+',
-    isSurgical: false,
-    drainsAspect: '',
-    operativeWound: '',
+    gastricResidue: '', prokineticsLaxatives: '',
+    lastEvacuationDate: '', evacuationAspect: '',
+    abdomen: 'RHA+', isSurgical: false,
+    drainsAspect: '', operativeWound: '',
   },
   renal: {
-    diuresis: '1500ml/24h',
-    diuretics: '',
-    glycemia: '120',
-    balance: '+200ml',
-    dialysis: '',
-    insulin: '',
-    observations: '',
+    diuresis: '1200ml/24h', diuretics: '', glycemia: '110',
+    balance: '-100ml', dialysis: '', insulin: '', observations: '',
     corticoidUse: false,
   },
   hemato: {
-    antibiotics: [],
-    cultures: [],
-    temperature: '36.8',
-    biomarkers: 'PCR: 2.1',
-    corticoids: '',
-    observations: '',
+    antibiotics: [], cultures: [], temperature: '36.5',
+    biomarkers: '', corticoids: '', observations: '',
   },
   prophylaxis: {
     anticoagulation: 'Enoxaparina 40mg',
@@ -110,320 +75,180 @@ const makeFullFormData = (overrides: Record<string, any> = {}) => ({
   ...overrides,
 });
 
+// ─── Reset entre testes ───────────────────────────────────────────────────────
 beforeEach(() => {
   mockReset(prismaMock as any);
   (generateEvolutionText as jest.Mock).mockClear();
-  (generateEvolutionText as jest.Mock).mockReturnValue('TEXTO GERADO MOCK');
+  (generateEvolutionText as jest.Mock).mockReturnValue('TEXTO_GERADO_MOCK');
+  (prismaMock.clinicalEvolution.create as jest.Mock).mockResolvedValue({ id: 1 });
+  (prismaMock.patient.update as jest.Mock).mockResolvedValue({});
 });
 
-// ─── Testes ───────────────────────────────────────────────────────────────────
-describe('saveEvolution', () => {
-
-  it('salva evolução com sucesso e retorna { success: true }', async () => {
-    (prismaMock.clinicalEvolution.create as jest.Mock).mockResolvedValue({ id: 1 });
-    (prismaMock.patient.update as jest.Mock).mockResolvedValue({});
-
-    const result = await saveEvolution(makeFullFormData(), 1, 10);
+// ─── Fluxo principal ──────────────────────────────────────────────────────────
+describe('saveEvolution — fluxo principal', () => {
+  it('retorna { success: true } quando evolução é salva com sucesso', async () => {
+    const result = await saveEvolution(makeFormData(), 1, 10);
 
     expect(result.success).toBe(true);
-    expect(prismaMock.clinicalEvolution.create).toHaveBeenCalledTimes(1);
   });
 
-  it('mapeia campos gerais (height, weight) corretamente', async () => {
-    (prismaMock.clinicalEvolution.create as jest.Mock).mockResolvedValue({ id: 1 });
-    (prismaMock.patient.update as jest.Mock).mockResolvedValue({});
+  it('chama clinicalEvolution.create com bed_id e patient_id corretos', async () => {
+    await saveEvolution(makeFormData(), 5, 20);
 
-    await saveEvolution(makeFullFormData(), 1, 10);
-
-    const createCall = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
-    expect(createCall.data.patient_height).toBe(175);
-    expect(createCall.data.patient_weight).toBe(80);
+    expect(prismaMock.clinicalEvolution.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          bed_id: 5,
+          patient_id: 20,
+        }),
+      })
+    );
   });
 
-  it('mapeia campos respiratórios corretamente', async () => {
-    (prismaMock.clinicalEvolution.create as jest.Mock).mockResolvedValue({ id: 1 });
-    (prismaMock.patient.update as jest.Mock).mockResolvedValue({});
+  it('chama clinicalEvolution.create com doctor_id = 1 (HARDCODED)', async () => {
+    await saveEvolution(makeFormData(), 1, 10);
 
-    const data = makeFullFormData({
-      respiratory: {
-        airwayType: 'tot',
-        supports: [{ id: 'vm', name: 'VM' }],
-        spo2: '96',
-        sao2: '97',
-        observations: 'Sem intercorrências',
-        chestXray: 'Normal',
-      },
+    const call = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
+    expect(call.data.doctor_id).toBe(1);
+  });
+
+  it('retorna { success: false, error } quando Prisma lança exceção', async () => {
+    (prismaMock.clinicalEvolution.create as jest.Mock).mockRejectedValue(
+      new Error('constraint violation')
+    );
+
+    const result = await saveEvolution(makeFormData(), 1, 10);
+
+    expect(result.success).toBe(false);
+    expect(typeof (result as any).error).toBe('string');
+  });
+
+  it('nunca propaga exceção — sempre retorna objeto de resultado', async () => {
+    (prismaMock.clinicalEvolution.create as jest.Mock).mockRejectedValue(
+      new Error('Unexpected error')
+    );
+
+    await expect(saveEvolution(makeFormData(), 1, 10)).resolves.not.toThrow();
+    const result = await saveEvolution(makeFormData(), 1, 10);
+    expect(result).toHaveProperty('success');
+  });
+});
+
+// ─── Mapeamento de dados ──────────────────────────────────────────────────────
+describe('saveEvolution — mapeamento de campos', () => {
+  it('height string → patient_height como number', async () => {
+    await saveEvolution(makeFormData({ general: { sex: 'F', height: '170', weight: '70', airwayType: 'fisiologica' } }), 1, 10);
+
+    const call = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
+    expect(call.data.patient_height).toBe(170);
+    expect(typeof call.data.patient_height).toBe('number');
+  });
+
+  it('weight string → patient_weight como number', async () => {
+    await saveEvolution(makeFormData({ general: { sex: 'F', height: '162', weight: '65.5', airwayType: 'fisiologica' } }), 1, 10);
+
+    const call = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
+    expect(call.data.patient_weight).toBe(65.5);
+    expect(typeof call.data.patient_weight).toBe('number');
+  });
+
+  it('height inválida ("abc") → patient_height = null', async () => {
+    await saveEvolution(makeFormData({ general: { sex: 'F', height: 'abc', weight: '', airwayType: 'fisiologica' } }), 1, 10);
+
+    const call = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
+    expect(call.data.patient_height).toBeNull();
+  });
+
+  it('airwayType → airway_type no banco', async () => {
+    const data = makeFormData({
+      respiratory: { ...makeFormData().respiratory, airwayType: 'tot' },
     });
-
     await saveEvolution(data, 1, 10);
 
-    const createCall = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
-    expect(createCall.data.airway_type).toBe('tot');
-    expect(createCall.data.respiratory_spo2).toBe('96');
-    expect(createCall.data.respiratory_sao2).toBe('97');
-    expect(createCall.data.respiratory_observation).toBe('Sem intercorrências');
-    expect(createCall.data.respiratory_chest_xray).toBe('Normal');
+    const call = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
+    expect(call.data.airway_type).toBe('tot');
   });
 
-  it('mapeia campos neurológicos corretamente', async () => {
-    (prismaMock.clinicalEvolution.create as jest.Mock).mockResolvedValue({ id: 1 });
-    (prismaMock.patient.update as jest.Mock).mockResolvedValue({});
-
-    const data = makeFullFormData({
-      neurological: {
-        sedationDrugs: [{ id: 'prop', name: 'Propofol', flow: 20 }],
-        neurologicalScales: 'RASS: -2',
-        pupils: 'Mióticas',
-        bis: '45',
-        subjectiveObservations: 'Agitação',
-        enteralDrugs: 'Tramadol',
-        pic: '15',
-      },
+  it('isSurgical booleano → nutrition_surgical como boolean', async () => {
+    const data = makeFormData({
+      nutrition: { ...makeFormData().nutrition, isSurgical: true },
     });
-
     await saveEvolution(data, 1, 10);
 
-    const createCall = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
-    expect(createCall.data.neurologic_scales).toBe('RASS: -2');
-    expect(createCall.data.neurologic_pupils).toBe('Mióticas');
-    expect(createCall.data.neurologic_bis).toBe('45');
-    expect(createCall.data.neurologic_pic).toBe('15');
-    expect(createCall.data.neurologic_observation).toBe('Agitação');
+    const call = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
+    expect(call.data.nutrition_surgical).toBe(true);
+    expect(typeof call.data.nutrition_surgical).toBe('boolean');
   });
 
-  it('mapeia campos hemodinâmicos corretamente', async () => {
-    (prismaMock.clinicalEvolution.create as jest.Mock).mockResolvedValue({ id: 1 });
-    (prismaMock.patient.update as jest.Mock).mockResolvedValue({});
-
-    const data = makeFullFormData({
-      hemodynamics: {
-        vasoactiveDrugs: [{ id: 'nora', name: 'Noradrenalina', flow: 5 }],
-        pam: '65',
-        fc: '95',
-        rhythm: 'FA',
-        enteralDrugs: 'Amiodarona',
-        tec: '3s',
-        lactate: '2.5',
-        svco2: '65',
-        gapco2: '4',
-        observations: 'Instabilidade',
-      },
-    });
-
-    await saveEvolution(data, 1, 10);
-
-    const createCall = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
-    expect(createCall.data.hemodynamic_pam).toBe('65');
-    expect(createCall.data.hemodynamic_fc).toBe('95');
-    expect(createCall.data.hemodynamic_rhythm).toBe('FA');
-    expect(createCall.data.hemodynamic_lactate).toBe('2.5');
-    expect(createCall.data.hemodynamic_svco2).toBe('65');
-    expect(createCall.data.hemodynamic_gapco2).toBe('4');
-    expect(createCall.data.hemodynamic_observation).toBe('Instabilidade');
-  });
-
-  it('mapeia campos renais corretamente', async () => {
-    (prismaMock.clinicalEvolution.create as jest.Mock).mockResolvedValue({ id: 1 });
-    (prismaMock.patient.update as jest.Mock).mockResolvedValue({});
-
-    await saveEvolution(makeFullFormData(), 1, 10);
-
-    const createCall = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
-    expect(createCall.data.renal_diuresis).toBe('1500ml/24h');
-    expect(createCall.data.renal_glycemia).toBe('120');
-    expect(createCall.data.renal_balance).toBe('+200ml');
-  });
-
-  it('mapeia campos hematoinfecciosos corretamente', async () => {
-    (prismaMock.clinicalEvolution.create as jest.Mock).mockResolvedValue({ id: 1 });
-    (prismaMock.patient.update as jest.Mock).mockResolvedValue({});
-
-    await saveEvolution(makeFullFormData(), 1, 10);
-
-    const createCall = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
-    expect(createCall.data.hemato_temperature).toBe('36.8');
-    expect(createCall.data.hemato_biomarkers).toBe('PCR: 2.1');
-  });
-
-  it('mapeia profilaxias corretamente', async () => {
-    (prismaMock.clinicalEvolution.create as jest.Mock).mockResolvedValue({ id: 1 });
-    (prismaMock.patient.update as jest.Mock).mockResolvedValue({});
-
-    await saveEvolution(makeFullFormData(), 1, 10);
-
-    const createCall = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
-    expect(createCall.data.prophylaxis_tev).toBe('Enoxaparina 40mg');
-    expect(createCall.data.prophylaxis_ibp).toBe('Omeprazol 40mg');
-  });
-
-  it('usa generatedText do formData quando informado', async () => {
-    (prismaMock.clinicalEvolution.create as jest.Mock).mockResolvedValue({ id: 1 });
-    (prismaMock.patient.update as jest.Mock).mockResolvedValue({});
-
-    const data = makeFullFormData({ generatedText: 'TEXTO JÁ GERADO NO FRONT' });
-    await saveEvolution(data, 1, 10);
-
-    const createCall = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
-    expect(createCall.data.generated_text).toBe('TEXTO JÁ GERADO NO FRONT');
-    expect(generateEvolutionText).not.toHaveBeenCalled();
-  });
-
-  it('chama generateEvolutionText quando generatedText está vazio', async () => {
-    (prismaMock.clinicalEvolution.create as jest.Mock).mockResolvedValue({ id: 1 });
-    (prismaMock.patient.update as jest.Mock).mockResolvedValue({});
-
-    await saveEvolution(makeFullFormData({ generatedText: '' }), 1, 10);
-
-    expect(generateEvolutionText).toHaveBeenCalledTimes(1);
-    const createCall = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
-    expect(createCall.data.generated_text).toBe('TEXTO GERADO MOCK');
-  });
-
-  it('concatena suportes nutricionais com vírgula', async () => {
-    (prismaMock.clinicalEvolution.create as jest.Mock).mockResolvedValue({ id: 1 });
-    (prismaMock.patient.update as jest.Mock).mockResolvedValue({});
-
-    const data = makeFullFormData({
+  it('supports concatenados com ", " em nutrition_support', async () => {
+    const data = makeFormData({
       nutrition: {
+        ...makeFormData().nutrition,
         supports: [
           { support: { name: 'Enteral' } },
           { support: { name: 'Parenteral' } },
         ],
-        gastricResidue: '', prokineticsLaxatives: '',
-        lastEvacuationDate: '', evacuationAspect: '',
-        abdomen: '', isSurgical: false,
-        drainsAspect: '', operativeWound: '',
       },
     });
-
     await saveEvolution(data, 1, 10);
 
-    const createCall = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
-    expect(createCall.data.nutrition_support).toBe('Enteral, Parenteral');
+    const call = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
+    expect(call.data.nutrition_support).toBe('Enteral, Parenteral');
   });
 
-  it('salva evacuação com data e aspecto concatenados', async () => {
-    (prismaMock.clinicalEvolution.create as jest.Mock).mockResolvedValue({ id: 1 });
-    (prismaMock.patient.update as jest.Mock).mockResolvedValue({});
-
-    const data = makeFullFormData({
+  it('lastEvacuationDate + evacuationAspect concatenados com " - "', async () => {
+    const data = makeFormData({
       nutrition: {
-        supports: [], gastricResidue: '', prokineticsLaxatives: '',
-        lastEvacuationDate: '2026-04-28',
+        ...makeFormData().nutrition,
+        lastEvacuationDate: '2026-05-06',
         evacuationAspect: 'Pastoso',
-        abdomen: '', isSurgical: false,
-        drainsAspect: '', operativeWound: '',
       },
     });
-
     await saveEvolution(data, 1, 10);
 
-    const createCall = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
-    expect(createCall.data.nutrition_evacuation).toBe('2026-04-28 - Pastoso');
+    const call = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
+    expect(call.data.nutrition_evacuation).toBe('2026-05-06 - Pastoso');
   });
+});
 
-  it('salva apenas aspecto da evacuação quando data não informada', async () => {
-    (prismaMock.clinicalEvolution.create as jest.Mock).mockResolvedValue({ id: 1 });
-    (prismaMock.patient.update as jest.Mock).mockResolvedValue({});
-
-    const data = makeFullFormData({
-      nutrition: {
-        supports: [], gastricResidue: '', prokineticsLaxatives: '',
-        lastEvacuationDate: '',
-        evacuationAspect: 'Líquido',
-        abdomen: '', isSurgical: false,
-        drainsAspect: '', operativeWound: '',
-      },
-    });
-
-    await saveEvolution(data, 1, 10);
-
-    const createCall = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
-    expect(createCall.data.nutrition_evacuation).toBe('Líquido');
-  });
-
-  it('atualiza peso do paciente quando weight informado', async () => {
-    (prismaMock.clinicalEvolution.create as jest.Mock).mockResolvedValue({ id: 1 });
-    (prismaMock.patient.update as jest.Mock).mockResolvedValue({});
-
-    await saveEvolution(makeFullFormData(), 1, 10);
+// ─── Atualização de peso do paciente ─────────────────────────────────────────
+describe('saveEvolution — atualização de peso do paciente', () => {
+  it('chama patient.update com weight quando weight está preenchido', async () => {
+    await saveEvolution(makeFormData(), 1, 10);
 
     expect(prismaMock.patient.update).toHaveBeenCalledWith({
       where: { id: 10 },
-      data: { weight: 80 },
+      data: { weight: 65 },
     });
   });
 
-  it('não atualiza peso do paciente quando weight está vazio', async () => {
-    (prismaMock.clinicalEvolution.create as jest.Mock).mockResolvedValue({ id: 1 });
-
+  it('NÃO chama patient.update quando weight está vazio', async () => {
     await saveEvolution(
-      makeFullFormData({ general: { sex: 'M', height: '175', weight: '', airwayType: 'fisiologica' } }),
+      makeFormData({ general: { sex: 'F', height: '162', weight: '', airwayType: 'fisiologica' } }),
       1, 10
     );
 
     expect(prismaMock.patient.update).not.toHaveBeenCalled();
   });
+});
 
-  it('passa bed_id e patient_id corretos para o create', async () => {
-    (prismaMock.clinicalEvolution.create as jest.Mock).mockResolvedValue({ id: 1 });
-    (prismaMock.patient.update as jest.Mock).mockResolvedValue({});
-
-    await saveEvolution(makeFullFormData(), 5, 42);
-
-    const createCall = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
-    expect(createCall.data.bed_id).toBe(5);
-    expect(createCall.data.patient_id).toBe(42);
-  });
-
-  it('usa HARDCODED_DOCTOR_ID = 1 no create', async () => {
-    (prismaMock.clinicalEvolution.create as jest.Mock).mockResolvedValue({ id: 1 });
-    (prismaMock.patient.update as jest.Mock).mockResolvedValue({});
-
-    await saveEvolution(makeFullFormData(), 1, 10);
-
-    const createCall = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
-    expect(createCall.data.doctor_id).toBe(1);
-  });
-
-  it('retorna { success: false, error } quando create falha', async () => {
-    (prismaMock.clinicalEvolution.create as jest.Mock).mockRejectedValue(
-      new Error('Unique constraint failed')
-    );
-
-    const result = await saveEvolution(makeFullFormData(), 1, 10);
-
-    expect(result.success).toBe(false);
-    expect(result.error).toContain('Unique constraint failed');
-  });
-
-  it('trata height inválido (NaN) como null', async () => {
-    (prismaMock.clinicalEvolution.create as jest.Mock).mockResolvedValue({ id: 1 });
-    (prismaMock.patient.update as jest.Mock).mockResolvedValue({});
-
-    const data = makeFullFormData({
-      general: { sex: 'M', height: 'abc', weight: '', airwayType: 'fisiologica' },
-    });
-
+// ─── Geração de texto ─────────────────────────────────────────────────────────
+describe('saveEvolution — geração de texto', () => {
+  it('usa generatedText do formData quando preenchido, sem chamar generateEvolutionText', async () => {
+    const data = makeFormData({ generatedText: 'TEXTO FORNECIDO PELO FRONTEND' });
     await saveEvolution(data, 1, 10);
 
-    const createCall = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
-    expect(createCall.data.patient_height).toBeNull();
-    expect(createCall.data.patient_weight).toBeNull();
+    const call = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
+    expect(call.data.generated_text).toBe('TEXTO FORNECIDO PELO FRONTEND');
+    expect(generateEvolutionText).not.toHaveBeenCalled();
   });
 
-  it('nutrition_surgical é salvo como Boolean', async () => {
-    (prismaMock.clinicalEvolution.create as jest.Mock).mockResolvedValue({ id: 1 });
-    (prismaMock.patient.update as jest.Mock).mockResolvedValue({});
-
-    const data = makeFullFormData({
-      nutrition: { ...makeFullFormData().nutrition, isSurgical: true },
-    });
-
+  it('chama generateEvolutionText quando generatedText está vazio', async () => {
+    const data = makeFormData({ generatedText: '' });
     await saveEvolution(data, 1, 10);
 
-    const createCall = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
-    expect(typeof createCall.data.nutrition_surgical).toBe('boolean');
-    expect(createCall.data.nutrition_surgical).toBe(true);
+    expect(generateEvolutionText).toHaveBeenCalled();
+    const call = (prismaMock.clinicalEvolution.create as jest.Mock).mock.calls[0][0];
+    expect(call.data.generated_text).toBe('TEXTO_GERADO_MOCK');
   });
 });

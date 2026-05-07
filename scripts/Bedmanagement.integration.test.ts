@@ -1,9 +1,10 @@
 /**
- * Testes de Integração — bedManagement.ts
- * 
- * Estratégia: Prisma Client é mockado via jest-mock-extended (mockDeep).
+ * Testes de Integração — bedManagement.ts (Nível 2 QA Strategy)
+ *
+ * Estratégia: PrismaClient mockado via jest-mock-extended com import type
+ * do cliente gerado em @/app/generated/prisma/client (Prisma 6, saída customizada).
  * Cada teste isola chamadas ao banco sem precisar de conexão real.
- * 
+ *
  * Cobertura:
  *  - getDashboardData
  *  - createBed
@@ -15,24 +16,21 @@
  */
 
 import { mockDeep, mockReset, DeepMockProxy } from 'jest-mock-extended';
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@/app/generated/prisma/client';
 
-// ─── Mock do módulo Prisma (factory function evita hoisting issue) ────────────
+// ─── Mock do módulo Prisma ────────────────────────────────────────────────────
 jest.mock('@/lib/prisma', () => ({
   __esModule: true,
   default: mockDeep<PrismaClient>(),
 }));
 
-// Importar o mock após o jest.mock para obter a referência
-import prismaImport from '@/lib/prisma';
-const prismaMock = prismaImport as DeepMockProxy<PrismaClient>;
-
-// Mock de next/cache (não existe no ambiente de teste)
 jest.mock('next/cache', () => ({
   revalidatePath: jest.fn(),
 }));
 
-// ─── Import das actions (APÓS o mock) ────────────────────────────────────────
+import prismaImport from '@/lib/prisma';
+const prismaMock = prismaImport as DeepMockProxy<PrismaClient>;
+
 import {
   getDashboardData,
   createBed,
@@ -43,7 +41,7 @@ import {
   deleteBed,
 } from '@/app/actions/bedManagement';
 
-// ─── Fábrica de dados ─────────────────────────────────────────────────────────
+// ─── Fábricas de dados ────────────────────────────────────────────────────────
 const makeBed = (overrides = {}) => ({
   id: 1,
   bed_number: 1,
@@ -96,7 +94,7 @@ describe('getDashboardData', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].status).toBe('OCCUPIED');
-    expect(result[0].current_patient?.name).toBe('Maria Silva');
+    expect((result[0] as any).current_patient?.name).toBe('Maria Silva');
     expect(prismaMock.bed.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         orderBy: { bed_number: 'asc' },
@@ -138,11 +136,11 @@ describe('createBed', () => {
     const result = await createBed(1);
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe('Número de leito já existe');
+    expect((result as any).error).toBe('Número de leito já existe');
     expect(prismaMock.bed.create).not.toHaveBeenCalled();
   });
 
-  it('formata label corretamente para leito com número < 10', async () => {
+  it('formata label como "Leito 0X" para número < 10', async () => {
     (prismaMock.bed.findUnique as jest.Mock).mockResolvedValue(null);
     (prismaMock.bed.create as jest.Mock).mockResolvedValue(makeBed({ bed_number: 5, label: 'Leito 05' }));
 
@@ -155,7 +153,7 @@ describe('createBed', () => {
     );
   });
 
-  it('formata label corretamente para leito com número >= 10', async () => {
+  it('formata label como "Leito 12" para número >= 10', async () => {
     (prismaMock.bed.findUnique as jest.Mock).mockResolvedValue(null);
     (prismaMock.bed.create as jest.Mock).mockResolvedValue(makeBed({ bed_number: 12, label: 'Leito 12' }));
 
@@ -175,7 +173,7 @@ describe('createBed', () => {
     const result = await createBed(1);
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe('Erro ao criar leito');
+    expect((result as any).error).toBe('Erro ao criar leito');
   });
 });
 
@@ -184,7 +182,6 @@ describe('admitPatient', () => {
   it('admite paciente com sucesso via transação', async () => {
     const newPatient = makePatient({ id: 20, name: 'João Pereira' });
 
-    // Simula o callback da $transaction
     (prismaMock.$transaction as jest.Mock).mockImplementation(async (callback: any) => {
       const tx = {
         patient: { create: jest.fn().mockResolvedValue(newPatient) },
@@ -204,10 +201,10 @@ describe('admitPatient', () => {
     const result = await admitPatient(1, 'João Pereira');
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe('Falha ao admitir paciente');
+    expect((result as any).error).toBe('Falha ao admitir paciente');
   });
 
-  it('cria paciente com admission_date definida', async () => {
+  it('cria paciente com admission_date como Date', async () => {
     let patientCreateData: any;
 
     (prismaMock.$transaction as jest.Mock).mockImplementation(async (callback: any) => {
@@ -225,7 +222,6 @@ describe('admitPatient', () => {
 
     await admitPatient(1, 'Teste Admissão');
 
-    expect(patientCreateData).toBeDefined();
     expect(patientCreateData.name).toBe('Teste Admissão');
     expect(patientCreateData.admission_date).toBeInstanceOf(Date);
   });
@@ -256,12 +252,11 @@ describe('dischargePatient', () => {
     const result = await dischargePatient(999);
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe('Leito não encontrado');
+    expect((result as any).error).toBe('Leito não encontrado');
   });
 
-  it('processa alta mesmo quando leito não tem paciente vinculado', async () => {
+  it('não atualiza paciente quando leito não tem paciente vinculado', async () => {
     const bedWithoutPatient = makeBed({ current_patient_id: null });
-
     (prismaMock.bed.findUnique as jest.Mock).mockResolvedValue(bedWithoutPatient);
 
     let patientUpdateCalled = false;
@@ -280,7 +275,6 @@ describe('dischargePatient', () => {
 
     const result = await dischargePatient(1);
 
-    // Sem paciente vinculado, não deve atualizar o paciente
     expect(patientUpdateCalled).toBe(false);
     expect(result.success).toBe(true);
   });
@@ -329,7 +323,7 @@ describe('finishCleaning', () => {
     const result = await finishCleaning(1);
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe('Erro ao liberar leito');
+    expect((result as any).error).toBe('Erro ao liberar leito');
   });
 });
 
@@ -377,7 +371,7 @@ describe('deleteBed', () => {
     const result = await deleteBed(1);
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe('Não é possível excluir um leito ocupado.');
+    expect((result as any).error).toBe('Não é possível excluir um leito ocupado.');
     expect(prismaMock.bed.delete).not.toHaveBeenCalled();
   });
 
@@ -387,19 +381,17 @@ describe('deleteBed', () => {
     const result = await deleteBed(999);
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe('Leito não encontrado');
+    expect((result as any).error).toBe('Leito não encontrado');
   });
 
   it('retorna erro quando deleção falha por FK (histórico clínico)', async () => {
     (prismaMock.bed.findUnique as jest.Mock).mockResolvedValue(makeBed({ status: 'VACANT' }));
-    (prismaMock.bed.delete as jest.Mock).mockRejectedValue(
-      new Error('Foreign key constraint failed')
-    );
+    (prismaMock.bed.delete as jest.Mock).mockRejectedValue(new Error('Foreign key constraint failed'));
 
     const result = await deleteBed(1);
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe('Erro ao excluir. O leito pode ter histórico clínico vinculado.');
+    expect((result as any).error).toBe('Erro ao excluir. O leito pode ter histórico clínico vinculado.');
   });
 
   it('permite deletar leito em limpeza', async () => {
