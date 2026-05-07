@@ -2,25 +2,33 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifySession } from "./lib/session";
 
+const PROTECTED_PREFIXES = ["/dashboard", "/admin"];
+
+function isProtectedRoute(pathname: string): boolean {
+    return PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+/** Returns the home route for an authenticated user based on their role. */
+function resolveHomeForRole(role: unknown): string {
+    if (role === "DOCTOR") return "/admin";
+    if (role === "NURSE") return "/dashboard";
+    return "/dashboard";
+}
+
 export async function middleware(req: NextRequest) {
-    // Rotas protegidas (tudo dentro de /dashboard)
-    const isProtectedRoute = req.nextUrl.pathname.startsWith("/dashboard");
-    const isPublicRoute = req.nextUrl.pathname === "/login";
+    const { pathname } = req.nextUrl;
+    const isLoginRoute = pathname === "/login";
 
-    // Ler o cookie de sessão
     const session = req.cookies.get("session")?.value;
-
-    // Decodificar a sessão
     const payload = await verifySession(session);
 
-    // Redirecionar para login se for rota protegida e não tiver sessão válida
-    if (isProtectedRoute && !payload) {
+    if (isProtectedRoute(pathname) && !payload) {
         return NextResponse.redirect(new URL("/login", req.nextUrl));
     }
 
-    // Redirecionar para dashboard se já estiver logado e tentar acessar o login
-    if (isPublicRoute && payload) {
-        return NextResponse.redirect(new URL("/dashboard", req.nextUrl));
+    if (isLoginRoute && payload) {
+        const home = resolveHomeForRole(payload.role);
+        return NextResponse.redirect(new URL(home, req.nextUrl));
     }
 
     return NextResponse.next();
