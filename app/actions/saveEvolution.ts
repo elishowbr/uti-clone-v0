@@ -27,7 +27,7 @@ interface FullFormData {
 // TODO: Em produção, pegar o ID do médico da sessão (Auth)
 const HARDCODED_DOCTOR_ID = 1;
 
-export async function saveEvolution(data: FullFormData, bedId: number, patientId: number) {wwwwwwwwwwwwwwwwwww
+export async function saveEvolution(data: FullFormData, bedId: number, patientId: number) {
     try {
 
         console.log(data.generatedText)
