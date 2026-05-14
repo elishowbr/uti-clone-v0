@@ -2,13 +2,20 @@
  * Mock staff credentials used exclusively for the prototype authentication flow.
  *
  * This module MUST be replaced by real DB-backed user lookup once the
- * `User ↔ Doctor/Nurse` domain relation is modelled in the Prisma schema.
+ * `User ↔ Doctor/Nurse/Admin/Manager` domain relation is modelled in the
+ * Prisma schema.
  *
  * Security note: passwords are stored as plain strings here because this data
  * never reaches production. Do NOT replicate this pattern outside prototype code.
+ *
+ * Roles:
+ *   DOCTOR  — Médico Intensivista (painel clínico /admin)
+ *   NURSE   — Enfermeiro(a) UTI  (gestão de leitos /dashboard)
+ *   ADMIN   — Administrador de Sistema (painel admin /admin)
+ *   MANAGER — Gestor Hospitalar (painel gestor /admin)
  */
 
-export type StaffRole = "DOCTOR" | "NURSE";
+export type StaffRole = "DOCTOR" | "NURSE" | "ADMIN" | "MANAGER";
 
 export type MockStaffUser = {
     id: string;
@@ -22,6 +29,7 @@ export type MockStaffUser = {
     /** COREN registration number – Nurses only. */
     coren?: string;
     specialty: string;
+    unit: string;
 };
 
 export const MOCK_STAFF_USERS: MockStaffUser[] = [
@@ -33,6 +41,7 @@ export const MOCK_STAFF_USERS: MockStaffUser[] = [
         role: "DOCTOR",
         crm: "CRM-SP 142.387",
         specialty: "Medicina Intensiva",
+        unit: "UTI Adulto — HC Central",
     },
     {
         id: "mock-nurse-001",
@@ -41,7 +50,26 @@ export const MOCK_STAFF_USERS: MockStaffUser[] = [
         password: "Enfermeiro@2026",
         role: "NURSE",
         coren: "COREN-SP 456.789",
-        specialty: "UTI Adulto",
+        specialty: "Enfermagem Intensiva",
+        unit: "UTI Adulto — HC Central",
+    },
+    {
+        id: "mock-admin-001",
+        name: "Ana Lima",
+        email: "admin@hospital.com.br",
+        password: "Admin@2026",
+        role: "ADMIN",
+        specialty: "Administração de Sistemas",
+        unit: "TI & Sistemas — HC Central",
+    },
+    {
+        id: "mock-manager-001",
+        name: "Dr. Ricardo Farias",
+        email: "gestor@hospital.com.br",
+        password: "Gestor@2026",
+        role: "MANAGER",
+        specialty: "Gestão Hospitalar",
+        unit: "Diretoria Clínica — HC Central",
     },
 ];
 
