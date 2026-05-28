@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify } from "jose";
-import type { StaffRole } from "./mockUsers";
+import type { StaffRole } from "@/app/generated/prisma";
 import { cookies } from "next/headers";
 
 const secretKey = process.env.JWT_SECRET || "fallback-secret-for-development-only-change-in-production";
