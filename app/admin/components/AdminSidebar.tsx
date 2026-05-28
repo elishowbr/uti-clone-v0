@@ -16,6 +16,7 @@ import {
     TestTube,
     Users,
     X,
+    LogOut, // <-- Importação do ícone adicionada aqui
 } from "lucide-react";
 import { MOCK_DOCTOR } from "../lib/mockData";
 
@@ -183,19 +184,31 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                     />
                 </nav>
 
+                {/* Rodapé atualizado com o botão de Sair */}
                 <div className="px-4 py-4 border-t border-slate-100 bg-slate-50/60">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm shrink-0">
-                            {MOCK_DOCTOR.initials}
-                        </div>
-                        <div className="min-w-0">
-                            <div className="text-sm font-bold text-slate-800 truncate">
-                                {MOCK_DOCTOR.name}
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm shrink-0">
+                                {MOCK_DOCTOR.initials}
                             </div>
-                            <div className="text-[11px] text-slate-500 truncate">
-                                {MOCK_DOCTOR.crm}
+                            <div className="min-w-0">
+                                <div className="text-sm font-bold text-slate-800 truncate">
+                                    {MOCK_DOCTOR.name}
+                                </div>
+                                <div className="text-[11px] text-slate-500 truncate">
+                                    {MOCK_DOCTOR.crm}
+                                </div>
                             </div>
                         </div>
+                        
+                        {/* Novo botão de Logout */}
+                        <Link
+                            href="/logout"
+                            title="Sair do sistema"
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0 flex items-center justify-center"
+                        >
+                            <LogOut className="w-5 h-5" />
+                        </Link>
                     </div>
                 </div>
             </aside>
