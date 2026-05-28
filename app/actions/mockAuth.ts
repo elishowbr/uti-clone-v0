@@ -10,9 +10,19 @@ import { redirect } from "next/navigation";
  */
 const AUTH_DELAY_MS = 600;
 
+/**
+ * Maps each StaffRole to the landing route after a successful login.
+ *
+ * - DOCTOR  → /admin   (painel clínico do médico)
+ * - NURSE   → /dashboard (gestão de leitos)
+ * - ADMIN   → /admin   (painel administrativo de sistema)
+ * - MANAGER → /admin   (painel do gestor hospitalar)
+ */
 const ROLE_REDIRECT: Record<string, string> = {
     DOCTOR: "/admin",
     NURSE: "/dashboard",
+    ADMIN: "/admin",
+    MANAGER: "/admin",
 };
 
 /**
