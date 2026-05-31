@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import AdminSidebar from "./components/AdminSidebar";
 import AdminTopBar from "./components/AdminTopBar";
-import { HospitalProvider } from "./components/HospitalContext";
 
 export default function AdminLayout({
     children,
@@ -13,23 +12,21 @@ export default function AdminLayout({
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
-        <HospitalProvider>
-            <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900">
-                <AdminSidebar
-                    isOpen={isSidebarOpen}
-                    onClose={() => setIsSidebarOpen(false)}
+        <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900">
+            <AdminSidebar
+                isOpen={isSidebarOpen}
+                onClose={() => setIsSidebarOpen(false)}
+            />
+            <div className="flex-1 flex flex-col min-w-0">
+                <AdminTopBar
+                    onToggleSidebar={() => setIsSidebarOpen(true)}
                 />
-                <div className="flex-1 flex flex-col min-w-0">
-                    <AdminTopBar
-                        onToggleSidebar={() => setIsSidebarOpen(true)}
-                    />
-                    <main className="flex-1 p-6">
-                        <div className="max-w-7xl mx-auto w-full">
-                            {children}
-                        </div>
-                    </main>
-                </div>
+                <main className="flex-1 p-6">
+                    <div className="max-w-7xl mx-auto w-full">
+                        {children}
+                    </div>
+                </main>
             </div>
-        </HospitalProvider>
+        </div>
     );
 }

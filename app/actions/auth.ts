@@ -9,13 +9,13 @@ import type { StaffRole } from "@/app/generated/prisma";
 /**
  * Maps each StaffRole to the landing route after a successful login.
  *
- * - DOCTOR  → /admin   (painel clínico do médico)
+ * - DOCTOR  → /dashboard (painel clínico do médico)
  * - NURSE   → /dashboard (gestão de leitos)
- * - ADMIN   → /admin   (painel administrativo de sistema)
- * - MANAGER → /admin   (painel do gestor hospitalar)
+ * - ADMIN   → /admin     (painel administrativo de sistema)
+ * - MANAGER → /admin     (painel do gestor hospitalar)
  */
 const ROLE_REDIRECT: Record<StaffRole, string> = {
-    DOCTOR: "/admin",
+    DOCTOR: "/medico",
     NURSE: "/dashboard",
     ADMIN: "/admin",
     MANAGER: "/admin",

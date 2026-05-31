@@ -1,6 +1,8 @@
 'use server';
 
 import prisma from '@/lib/prisma';
+import { cookies } from 'next/headers';
+import { verifySession } from '@/lib/session';
 
 // Importando tipos dos componentes (Certifique-se que os caminhos estão corretos)
 import { RespiratoryData } from '@/app/dashboard/[bedId]/evolution/components/forms/RespiratoryForm';
@@ -24,13 +26,25 @@ interface FullFormData {
     prophylaxis: ProphylaxisData;
 }
 
-// TODO: Em produção, pegar o ID do médico da sessão (Auth)
-const HARDCODED_DOCTOR_ID = 1;
-
-export async function saveEvolution(data: FullFormData, bedId: number, patientId: number) {wwwwwwwwwwwwwwwwwww
+export async function saveEvolution(data: FullFormData, bedId: number, patientId: number) {
     try {
+        // 0. Resolver doctor_id a partir da sessão JWT
+        const cookieStore = await cookies();
+        const sessionCookie = cookieStore.get('session')?.value;
+        const payload = await verifySession(sessionCookie);
 
-        console.log(data.generatedText)
+        if (!payload?.userId) {
+            return { success: false, error: 'Sessão inválida. Faça login novamente.' };
+        }
+
+        const doctor = await prisma.doctor.findFirst({
+            where: { user_id: String(payload.userId) }
+        });
+
+        if (!doctor) {
+            return { success: false, error: 'Perfil de médico não encontrado para este usuário. Contate o administrador.' };
+        }
+
         // 1. Gerar Texto Consolidado (Para o campo generated_text)
         const generatedText = data.generatedText || generateEvolutionText(data);
 
@@ -47,7 +61,7 @@ export async function saveEvolution(data: FullFormData, bedId: number, patientId
             data: {
                 bed_id: bedId,
                 patient_id: patientId,
-                doctor_id: HARDCODED_DOCTOR_ID,
+                doctor_id: doctor.id,
 
                 // --- GERAL ---
                 patient_height: parseFloat(data.general.height) || null,

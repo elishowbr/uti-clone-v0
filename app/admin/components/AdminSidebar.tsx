@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -18,7 +18,7 @@ import {
     X,
     LogOut, // <-- Importação do ícone adicionada aqui
 } from "lucide-react";
-import { MOCK_DOCTOR } from "../lib/mockData";
+import { getDoctorProfile, type AdminDoctorProfile } from "../../actions/adminData";
 
 type NavItem = {
     href: string;
@@ -29,28 +29,16 @@ type NavItem = {
 
 const PRIMARY_ITEMS: NavItem[] = [
     { href: "/admin", label: "Visão Geral", icon: LayoutDashboard },
-    { href: "/admin/patients", label: "Pacientes", icon: Users, comingSoon: true },
-    { href: "/admin/beds", label: "Mapa de Leitos", icon: Bed, comingSoon: true },
-    {
-        href: "/admin/evolutions",
-        label: "Evoluções",
-        icon: Stethoscope,
-        comingSoon: true,
-    },
-    {
-        href: "/admin/prescriptions",
-        label: "Prescrições",
-        icon: Pill,
-        comingSoon: true,
-    },
-    { href: "/admin/exams", label: "Exames", icon: TestTube, comingSoon: true },
+    { href: "/admin/patients", label: "Auditoria de Pacientes", icon: Users, comingSoon: true },
+    { href: "/admin/beds", label: "Status dos Leitos", icon: Bed, comingSoon: true },
+    { href: "/admin/evolutions", label: "Auditoria de Evoluções", icon: Stethoscope, comingSoon: true },
 ];
 
 const SECONDARY_ITEMS: NavItem[] = [
-    { href: "/admin/schedule", label: "Escala Médica", icon: CalendarDays, comingSoon: true },
-    { href: "/admin/notes", label: "Notas Clínicas", icon: FileText, comingSoon: true },
-    { href: "/admin/reports", label: "Relatórios", icon: ClipboardList, comingSoon: true },
-    { href: "/admin/settings", label: "Configurações", icon: Settings, comingSoon: true },
+    { href: "/admin/staff", label: "Gestão da Equipe (Staff)", icon: Users, comingSoon: true },
+    { href: "/admin/indicators", label: "Indicadores de Ocupação", icon: Activity, comingSoon: true },
+    { href: "/admin/reports", label: "Relatórios Hospitalares", icon: ClipboardList, comingSoon: true },
+    { href: "/admin/settings", label: "Configurações Gerais", icon: Settings, comingSoon: true },
 ];
 
 function isItemActive(itemHref: string, currentPath: string): boolean {
@@ -125,6 +113,11 @@ function NavGroup({
 
 export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
     const pathname = usePathname() ?? "";
+    const [profile, setProfile] = useState<AdminDoctorProfile | null>(null);
+
+    useEffect(() => {
+        getDoctorProfile().then(setProfile);
+    }, []);
 
     return (
         <>
@@ -155,7 +148,7 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                                 UTI Care
                             </div>
                             <div className="text-[11px] text-slate-500">
-                                Painel do médico
+                                Gestão Estratégica
                             </div>
                         </div>
                     </Link>
@@ -171,13 +164,13 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
 
                 <nav className="flex-1 px-3 py-2 overflow-y-auto">
                     <NavGroup
-                        title="Operação clínica"
+                        title="Monitoramento"
                         items={PRIMARY_ITEMS}
                         pathname={pathname}
                         onClose={onClose}
                     />
                     <NavGroup
-                        title="Gestão"
+                        title="Administração"
                         items={SECONDARY_ITEMS}
                         pathname={pathname}
                         onClose={onClose}
@@ -189,14 +182,14 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                     <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-3 min-w-0">
                             <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm shrink-0">
-                                {MOCK_DOCTOR.initials}
+                                {profile?.initials ?? '...'}
                             </div>
                             <div className="min-w-0">
                                 <div className="text-sm font-bold text-slate-800 truncate">
-                                    {MOCK_DOCTOR.name}
+                                    {profile?.name ?? 'Carregando...'}
                                 </div>
                                 <div className="text-[11px] text-slate-500 truncate">
-                                    {MOCK_DOCTOR.crm}
+                                    {profile?.crm ?? ''}
                                 </div>
                             </div>
                         </div>
