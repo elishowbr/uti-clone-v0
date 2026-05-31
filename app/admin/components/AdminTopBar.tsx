@@ -1,15 +1,21 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Bell, Menu } from "lucide-react";
-import HospitalSelector from "./HospitalSelector";
-import { MOCK_DOCTOR } from "../lib/mockData";
+import { getDoctorProfile, type AdminDoctorProfile } from "../../actions/adminData";
+import UserProfileDropdown from "@/app/components/UserProfileDropdown";
 
 type AdminTopBarProps = {
     onToggleSidebar: () => void;
 };
 
 export default function AdminTopBar({ onToggleSidebar }: AdminTopBarProps) {
+    const [profile, setProfile] = useState<AdminDoctorProfile | null>(null);
+
+    useEffect(() => {
+        getDoctorProfile().then(setProfile);
+    }, []);
+
     return (
         <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-slate-100">
             <div className="flex items-center justify-between gap-4 px-6 py-4">
@@ -24,16 +30,15 @@ export default function AdminTopBar({ onToggleSidebar }: AdminTopBarProps) {
                     </button>
                     <div className="min-w-0">
                         <h1 className="text-lg font-bold text-slate-900 tracking-tight truncate">
-                            Painel do Médico
+                            Painel de Gestão Hospitalar
                         </h1>
                         <p className="text-xs text-slate-500 truncate">
-                            Operação clínica · {MOCK_DOCTOR.specialty}
+                            Administração & Estratégia · {profile?.position ?? 'Carregando...'}
                         </p>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <HospitalSelector />
                     <button
                         type="button"
                         title="Notificações"
@@ -43,18 +48,8 @@ export default function AdminTopBar({ onToggleSidebar }: AdminTopBarProps) {
                         <Bell className="w-4 h-4" />
                         <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
                     </button>
-                    <div className="hidden md:flex items-center gap-3 pl-3 border-l border-slate-200">
-                        <div className="text-right">
-                            <div className="text-sm font-bold text-slate-800 leading-tight">
-                                {MOCK_DOCTOR.name}
-                            </div>
-                            <div className="text-[11px] text-slate-500">
-                                {MOCK_DOCTOR.position}
-                            </div>
-                        </div>
-                        <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
-                            {MOCK_DOCTOR.initials}
-                        </div>
+                    <div className="pl-3 border-l border-slate-100">
+                        <UserProfileDropdown profile={profile} />
                     </div>
                 </div>
             </div>

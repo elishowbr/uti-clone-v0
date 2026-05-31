@@ -1,138 +1,19 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { mockLogin } from "@/app/actions/mockAuth";
-import Link from "next/link";
+import { login } from "@/app/actions/auth";
 import {
     Activity,
     Eye,
     EyeOff,
-    HeartPulse,
     Loader2,
-    ShieldCheck,
-    Stethoscope,
-    TrendingUp,
+    Lock,
+    Mail,
 } from "lucide-react";
-import type { StaffRole } from "@/lib/mockUsers";
-
-// ─── Role Configuration ───────────────────────────────────────────────────────
-
-type RoleConfig = {
-    label: string;
-    description: string;
-    email: string;
-    password: string;
-    icon: React.ReactNode;
-    accentClass: string;
-    activeBg: string;
-    activeBorder: string;
-    activeText: string;
-    badgeBg: string;
-    badgeText: string;
-};
-
-const ROLE_CONFIG: Record<StaffRole, RoleConfig> = {
-    DOCTOR: {
-        label: "Médico",
-        description: "Painel clínico e evoluções",
-        email: "medica@hospital.com.br",
-        password: "Medico@2026",
-        icon: <Stethoscope className="h-5 w-5" />,
-        accentClass: "blue",
-        activeBg: "bg-blue-50",
-        activeBorder: "border-blue-400",
-        activeText: "text-blue-700",
-        badgeBg: "bg-blue-100",
-        badgeText: "text-blue-700",
-    },
-    NURSE: {
-        label: "Enfermeiro",
-        description: "Gestão de leitos e pacientes",
-        email: "enfermeiro@hospital.com.br",
-        password: "Enfermeiro@2026",
-        icon: <HeartPulse className="h-5 w-5" />,
-        accentClass: "emerald",
-        activeBg: "bg-emerald-50",
-        activeBorder: "border-emerald-400",
-        activeText: "text-emerald-700",
-        badgeBg: "bg-emerald-100",
-        badgeText: "text-emerald-700",
-    },
-    ADMIN: {
-        label: "Administrador",
-        description: "Gestão de sistema e usuários",
-        email: "admin@hospital.com.br",
-        password: "Admin@2026",
-        icon: <ShieldCheck className="h-5 w-5" />,
-        accentClass: "indigo",
-        activeBg: "bg-indigo-50",
-        activeBorder: "border-indigo-400",
-        activeText: "text-indigo-700",
-        badgeBg: "bg-indigo-100",
-        badgeText: "text-indigo-700",
-    },
-    MANAGER: {
-        label: "Gestor",
-        description: "Relatórios e indicadores hospitalares",
-        email: "gestor@hospital.com.br",
-        password: "Gestor@2026",
-        icon: <TrendingUp className="h-5 w-5" />,
-        accentClass: "amber",
-        activeBg: "bg-amber-50",
-        activeBorder: "border-amber-400",
-        activeText: "text-amber-700",
-        badgeBg: "bg-amber-100",
-        badgeText: "text-amber-700",
-    },
-};
-
-const ROLE_ORDER: StaffRole[] = ["DOCTOR", "NURSE", "ADMIN", "MANAGER"];
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-type RoleCardProps = {
-    role: StaffRole;
-    config: RoleConfig;
-    isActive: boolean;
-    onClick: () => void;
-};
-
-function RoleCard({ role, config, isActive, onClick }: RoleCardProps) {
-    return (
-        <button
-            id={`role-tab-${role.toLowerCase()}`}
-            type="button"
-            onClick={onClick}
-            aria-pressed={isActive}
-            className={`flex flex-col items-start gap-1 p-3 rounded-xl border-2 text-left transition-all duration-200 w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-blue-400 ${
-                isActive
-                    ? `${config.activeBg} ${config.activeBorder} ${config.activeText} shadow-sm`
-                    : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-            }`}
-        >
-            <span
-                className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
-                    isActive ? `${config.badgeBg} ${config.activeText}` : "bg-slate-100 text-slate-500"
-                }`}
-            >
-                {config.icon}
-            </span>
-            <span className="text-sm font-bold leading-tight mt-0.5">{config.label}</span>
-            <span className={`text-[11px] leading-tight ${isActive ? "opacity-80" : "text-slate-400"}`}>
-                {config.description}
-            </span>
-        </button>
-    );
-}
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function LoginPage() {
-    const [state, formAction, isPending] = useActionState(mockLogin, null);
-    const [selectedRole, setSelectedRole] = useState<StaffRole>("DOCTOR");
+    const [state, formAction, isPending] = useActionState(login, null);
     const [showPassword, setShowPassword] = useState(false);
-
-    const config = ROLE_CONFIG[selectedRole];
 
     return (
         <div className="min-h-screen flex flex-col lg:flex-row bg-slate-50">
@@ -157,21 +38,20 @@ export default function LoginPage() {
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-300 opacity-75" />
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
                         </span>
-                        Sistema Online
+                        Portal Corporativo
                     </div>
                     <h1 className="text-4xl xl:text-5xl font-extrabold text-white leading-[1.1] tracking-tight">
                         Controle total<br />
                         <span className="text-cyan-200">dos seus leitos.</span>
                     </h1>
                     <p className="text-blue-100 text-lg leading-relaxed max-w-xs">
-                        Plataforma centralizada para equipes hospitalares acompanharem a UTI em tempo real.
+                        Plataforma integrada de alta segurança para equipes médicas e de enfermagem.
                     </p>
 
                     {/* Stat pills */}
                     <div className="flex flex-wrap gap-3 pt-2">
                         {[
-                            { label: "Leitos monitorados", value: "24/7" },
-                            { label: "Perfis de acesso", value: "4" },
+                            { label: "Monitoramento contínuo", value: "24/7" },
                             { label: "Conformidade LGPD", value: "✓" },
                         ].map((stat) => (
                             <div
@@ -187,7 +67,7 @@ export default function LoginPage() {
 
                 {/* Footer */}
                 <p className="text-blue-300 text-xs relative z-10">
-                    © {new Date().getFullYear()} UTI Care. Versão protótipo.
+                    © {new Date().getFullYear()} UTI Care. Todos os direitos reservados.
                 </p>
             </div>
 
@@ -207,37 +87,17 @@ export default function LoginPage() {
                         {/* Card header */}
                         <div className="px-8 pt-8 pb-6 border-b border-slate-100">
                             <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                                Acesso à plataforma
+                                Acesso Restrito
                             </h2>
                             <p className="text-slate-500 text-sm mt-1">
-                                Selecione seu perfil e insira suas credenciais.
+                                Insira suas credenciais corporativas autorizadas.
                             </p>
                         </div>
 
                         <div className="px-8 py-6 space-y-6">
-                            {/* ── Role selector grid ── */}
-                            <fieldset>
-                                <legend className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
-                                    Perfil de acesso
-                                </legend>
-                                <div className="grid grid-cols-2 gap-2.5">
-                                    {ROLE_ORDER.map((role) => (
-                                        <RoleCard
-                                            key={role}
-                                            role={role}
-                                            config={ROLE_CONFIG[role]}
-                                            isActive={selectedRole === role}
-                                            onClick={() => setSelectedRole(role)}
-                                        />
-                                    ))}
-                                </div>
-                            </fieldset>
-
                             {/* ── Form ── */}
-                            <form action={formAction} className="space-y-4" noValidate>
-                                {/* Hidden role field (used by server action for context if needed) */}
-                                <input type="hidden" name="role" value={selectedRole} />
-
+                            <form action={formAction} className="space-y-5" noValidate>
+                                
                                 {/* Email */}
                                 <div>
                                     <label
@@ -246,16 +106,21 @@ export default function LoginPage() {
                                     >
                                         E-mail profissional
                                     </label>
-                                    <input
-                                        id="login-email"
-                                        name="email"
-                                        type="email"
-                                        required
-                                        autoComplete="username"
-                                        placeholder={config.email}
-                                        disabled={isPending}
-                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-slate-900 placeholder:text-slate-400 text-sm disabled:opacity-60"
-                                    />
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                            <Mail className="w-4 h-4" />
+                                        </div>
+                                        <input
+                                            id="login-email"
+                                            name="email"
+                                            type="email"
+                                            required
+                                            autoComplete="username"
+                                            placeholder="seu.email@hospital.com.br"
+                                            disabled={isPending}
+                                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-slate-900 placeholder:text-slate-400 text-sm disabled:opacity-60"
+                                        />
+                                    </div>
                                 </div>
 
                                 {/* Password */}
@@ -264,9 +129,12 @@ export default function LoginPage() {
                                         htmlFor="login-password"
                                         className="block text-sm font-medium text-slate-700 mb-1.5"
                                     >
-                                        Senha
+                                        Senha de acesso
                                     </label>
                                     <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                            <Lock className="w-4 h-4" />
+                                        </div>
                                         <input
                                             id="login-password"
                                             name="password"
@@ -275,7 +143,7 @@ export default function LoginPage() {
                                             autoComplete="current-password"
                                             placeholder="••••••••"
                                             disabled={isPending}
-                                            className="w-full px-4 py-3 pr-11 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-slate-900 placeholder:text-slate-400 text-sm disabled:opacity-60"
+                                            className="w-full pl-10 pr-11 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-slate-900 placeholder:text-slate-400 text-sm disabled:opacity-60"
                                         />
                                         <button
                                             type="button"
@@ -319,36 +187,6 @@ export default function LoginPage() {
                                     )}
                                 </button>
                             </form>
-
-                            {/* ── Demo credentials hint ── */}
-                            <div className={`rounded-xl p-4 border ${config.activeBg} ${config.activeBorder} transition-colors duration-300`}>
-                                <p className={`text-[11px] font-extrabold uppercase tracking-wider mb-2 ${config.activeText}`}>
-                                    Credenciais de demonstração — {config.label}
-                                </p>
-                                <dl className={`space-y-1 text-xs ${config.activeText}`}>
-                                    <div className="flex gap-1.5">
-                                        <dt className="font-semibold opacity-70">E-mail:</dt>
-                                        <dd className="font-mono">{config.email}</dd>
-                                    </div>
-                                    <div className="flex gap-1.5">
-                                        <dt className="font-semibold opacity-70">Senha:</dt>
-                                        <dd className="font-mono">{config.password}</dd>
-                                    </div>
-                                </dl>
-                            </div>
-                        </div>
-
-                        {/* Card footer */}
-                        <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 text-center">
-                            <p className="text-sm text-slate-500">
-                                Novo no sistema?{" "}
-                                <Link
-                                    href="/register"
-                                    className="font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors"
-                                >
-                                    Criar conta
-                                </Link>
-                            </p>
                         </div>
                     </div>
 

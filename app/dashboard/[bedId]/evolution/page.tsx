@@ -8,6 +8,8 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation';
 // Actions
 import { saveEvolution } from '@/app/actions/saveEvolution';
 import { getPatientFromBed, getLastEvolution } from '@/app/actions/patientData';
+import { getCurrentUserRole } from '@/app/actions/adminData';
+import { updatePatientCommentary } from '@/app/actions/patientClinical';
 
 // Componentes
 import RespiratoryForm, { RespiratoryData } from './components/forms/RespiratoryForm';
@@ -44,6 +46,7 @@ export default function EvolutionPage() {
     // Estado de Carregamento
     const [isLoading, setIsLoading] = useState(true);
     const [patientInfo, setPatientInfo] = useState<{ id: number, name: string, bedLabel: string } | null>(null);
+    const [userRole, setUserRole] = useState<string | null>(null);
 
     // --- ESTADOS GLOBAIS ---
     const [generalData, setGeneralData] = useState({ sex: '', height: '', weight: '', airwayType: 'fisiologica' , generatedText: '' });
@@ -73,6 +76,9 @@ export default function EvolutionPage() {
                 router.push('/dashboard');
                 return;
             }
+
+            const role = await getCurrentUserRole();
+            setUserRole(role);
 
             setPatientInfo({
                 id: result.patient.id,
@@ -165,14 +171,27 @@ export default function EvolutionPage() {
             prophylaxis: prophylaxisData
         };
 
-        const result = await saveEvolution(fullData, Number(bedId), patientInfo.id);
-
-        if (result.success) {
-            alert("Evolução salva com sucesso!");
-            router.push(`/dashboard/${bedId}`);
+        if (userRole === 'NURSE') {
+            // Persistência inteligente para Enfermagem (Evita violar foreign key de médicos)
+            const result = await updatePatientCommentary(patientInfo.id, finalText, true);
+            if (result.success) {
+                alert("Evolução de enfermagem salva com sucesso!");
+                router.push(`/dashboard/${bedId}`);
+            } else {
+                alert("Erro ao salvar: " + result.error);
+                setIsSaving(false);
+            }
         } else {
-            alert("Erro ao salvar: " + result.error);
-            setIsSaving(false);
+            // Persistência padrão (Médicos)
+            const result = await saveEvolution(fullData, Number(bedId), patientInfo.id);
+
+            if (result.success) {
+                alert("Evolução salva com sucesso!");
+                router.push(`/dashboard/${bedId}`);
+            } else {
+                alert("Erro ao salvar: " + result.error);
+                setIsSaving(false);
+            }
         }
     };
 
@@ -225,7 +244,7 @@ export default function EvolutionPage() {
                 <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                     <div className="flex items-center gap-2 mb-4 text-blue-600"><Activity className="w-5 h-5" /><h2 className="font-bold text-slate-800">Dados Gerais</h2></div>
                     <div className="p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
                             <div className="flex flex-col gap-1.5"><label className="text-sm font-semibold text-slate-600">Peso Predito (PBW)</label><div className="w-full px-3 py-2.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-500 font-bold flex items-center">{predictedWeight ? `${predictedWeight} kg` : '-'}</div></div>
                             <div className="flex flex-col gap-1.5">
                                 <label className="text-sm font-semibold text-slate-600 flex items-center gap-1"><Scale className="w-3 h-3" /> Peso Real (kg)</label>

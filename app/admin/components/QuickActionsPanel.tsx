@@ -2,22 +2,22 @@
 
 import React from "react";
 import {
-    FileText,
-    Pill,
-    Stethoscope,
-    TestTube,
-    UserPlus,
-    Users,
+    Activity,
+    ClipboardList,
+    UserCheck,
+    Settings,
+    FileSpreadsheet,
+    TrendingUp,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type QuickActionId =
-    | "new-evolution"
-    | "new-prescription"
-    | "request-exam"
-    | "clinical-note"
-    | "admit-patient"
-    | "view-patients";
+    | "audit-occupancy"
+    | "permanent-report"
+    | "manage-staff"
+    | "bed-block"
+    | "extract-reports"
+    | "hospital-goals";
 
 type QuickAction = {
     id: QuickActionId;
@@ -28,40 +28,40 @@ type QuickAction = {
 
 const QUICK_ACTIONS: QuickAction[] = [
     {
-        id: "new-evolution",
-        label: "Iniciar evolução",
-        description: "Registrar evolução clínica do paciente",
-        icon: Stethoscope,
+        id: "audit-occupancy",
+        label: "Auditar Ocupação",
+        description: "Histórico e giro de leitos da UTI",
+        icon: Activity,
     },
     {
-        id: "new-prescription",
-        label: "Nova prescrição",
-        description: "Renovar ou prescrever medicação",
-        icon: Pill,
+        id: "permanent-report",
+        label: "Média de Permanência",
+        description: "Tempo médio de internação e altas",
+        icon: ClipboardList,
     },
     {
-        id: "request-exam",
-        label: "Solicitar exame",
-        description: "Laboratoriais, imagem ou cultura",
-        icon: TestTube,
+        id: "manage-staff",
+        label: "Cadastrar Profissional",
+        description: "Adicionar médicos e enfermeiros à equipe",
+        icon: UserCheck,
     },
     {
-        id: "clinical-note",
-        label: "Nota clínica",
-        description: "Registrar intercorrência ou conduta",
-        icon: FileText,
+        id: "bed-block",
+        label: "Bloquear Leito",
+        description: "Manutenção preventiva ou higienização extra",
+        icon: Settings,
     },
     {
-        id: "admit-patient",
-        label: "Admitir paciente",
-        description: "Iniciar internação em leito vago",
-        icon: UserPlus,
+        id: "extract-reports",
+        label: "Extrair Faturamento",
+        description: "Exportar diárias, guias e despesas",
+        icon: FileSpreadsheet,
     },
     {
-        id: "view-patients",
-        label: "Pacientes da unidade",
-        description: "Visão completa dos leitos ativos",
-        icon: Users,
+        id: "hospital-goals",
+        label: "Metas da Unidade",
+        description: "Definir metas de giro e qualidade",
+        icon: TrendingUp,
     },
 ];
 
@@ -76,10 +76,10 @@ export default function QuickActionsPanel({
         <section className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100">
                 <h3 className="text-base font-bold text-slate-900">
-                    Ações rápidas
+                    Ações de Gestão
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                    Atalhos para o dia a dia clínico
+                    Atalhos estratégicos e administrativos
                 </p>
             </div>
             <div className="p-3 grid grid-cols-2 gap-2">
