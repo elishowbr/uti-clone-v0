@@ -240,13 +240,7 @@ export default function MedicoEvolutionsPage() {
                 </div>
             </div>
 
-            {/* Results count */}
-            {!loading && (
-                <p className="text-sm text-slate-500">
-                    <span className="font-semibold text-slate-800">{total}</span> evolução{total !== 1 ? 'ões' : ''} encontrada{total !== 1 ? 's' : ''}
-                    {search && <span className="ml-1">para <span className="font-semibold">"{search}"</span></span>}
-                </p>
-            )}
+
 
             {/* Content */}
             {loading ? (

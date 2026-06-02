@@ -15,6 +15,7 @@ function toUserProfileData(profile: DoctorProfile): UserProfileData {
     return {
         id: profile.id,
         name: profile.name,
+        email: profile.email,
         initials: profile.initials,
         crm: profile.crm,
         position: profile.position,
@@ -38,23 +39,9 @@ export default function DoctorTopBar({ onToggleSidebar, profile }: Props) {
                 <Menu className="w-5 h-5" />
             </button>
 
-            {/* Greeting (desktop) */}
-            <div className="hidden lg:flex items-center gap-2 text-sm text-slate-500">
-                <Stethoscope className="w-4 h-4 text-blue-500" />
-                <span>
-                    {greeting},{' '}
-                    <span className="font-semibold text-slate-800">
-                        {profile?.name ?? '...'}
-                    </span>
-                </span>
-            </div>
-
             {/* Right side */}
             <div className="flex items-center gap-3 ml-auto">
-                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-xs font-bold border border-blue-100">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                    Plantão Ativo
-                </div>
+
                 <UserProfileDropdown
                     profile={profile ? toUserProfileData(profile) : null}
                 />

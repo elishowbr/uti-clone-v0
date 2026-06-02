@@ -6,6 +6,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
 }
 
 datasource db {
@@ -24,6 +25,40 @@ enum Sex {
   MALE
   FEMALE
   OTHER
+}
+
+// ============================================
+// MODEL: Hospital (NOVO)
+// ============================================
+model Hospital {
+  id             Int      @id @default(autoincrement())
+  name           String
+  address        String
+  description    String?  @db.Text
+  available_beds Int?
+
+  beds           Bed[]
+  hospital_users HospitalUser[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("hospitals")
+}
+
+// ============================================
+// MODEL: HospitalUser (vínculo N:N user ↔ hospital)
+// ============================================
+model HospitalUser {
+  hospital_id Int
+  user_id     Int
+  hospital    Hospital @relation(fields: [hospital_id], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  created_at DateTime @default(now())
+
+  @@id([hospital_id, user_id])
+  @@map("hospital_users")
 }
 
 // ============================================
@@ -86,6 +121,9 @@ model Bed {
 
   status BedStatus @default(VACANT)
 
+  hospital_id Int?
+  hospital    Hospital? @relation(fields: [hospital_id], references: [id])
+
   // Quem está ocupando agora? (Relacionamento 1:1 com Patient)
   current_patient_id Int?     @unique
   current_patient    Patient? @relation(fields: [current_patient_id], references: [id])
@@ -97,6 +135,7 @@ model Bed {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
+  @@index([hospital_id])
   @@map("beds")
 }
 
@@ -238,14 +277,16 @@ enum StaffRole {
 // MODEL: User (Autenticação)
 // ============================================
 model User {
-  id         Int       @id @default(autoincrement())
-  name       String
-  email      String    @unique
-  password   String
-  role       StaffRole @default(NURSE)
+  id          Int       @id @default(autoincrement())
+  name        String
+  email       String    @unique
+  password    String
+  role        StaffRole @default(NURSE)
 
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
+  hospital_users HospitalUser[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@map("users")
 }
