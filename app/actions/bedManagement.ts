@@ -14,8 +14,13 @@ export async function getDashboardData() {
                 take: 1,
                 orderBy: { created_at: 'desc' },
                 select: {
+                    id: true,
                     created_at: true,
-                    generated_text: true
+                    generated_text: true,
+                    hemodynamic_drugs: true,
+                    hemato_antibiotics: true,
+                    respiratory_observation: true,
+                    neurologic_observation: true,
                 }
             }
         }
@@ -46,14 +51,15 @@ export async function createBed(bedNumber: number) {
 }
 
 // 3. Admitir Paciente (Ocupar leito)
-export async function admitPatient(bedId: number, patientName: string) {
+export async function admitPatient(bedId: number, patientName: string, commentary?: string) {
     try {
         await prisma.$transaction(async (tx) => {
-            // A. Criar o Paciente (Apenas com nome inicialmente)
+            // A. Criar o Paciente
             const newPatient = await tx.patient.create({
                 data: {
                     name: patientName,
-                    admission_date: new Date()
+                    admission_date: new Date(),
+                    commentary: commentary || null,
                 }
             });
 
@@ -94,11 +100,11 @@ export async function dischargePatient(bedId: number) {
                 });
             }
 
-            // B. Liberar o leito (Vai para Limpeza)
+            // B. Liberar o leito → VACANT diretamente (sem etapa de limpeza obrigatória)
             await tx.bed.update({
                 where: { id: bedId },
                 data: {
-                    status: 'CLEANING', // Enum Prisma
+                    status: 'VACANT',
                     current_patient_id: null
                 }
             });

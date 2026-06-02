@@ -6,7 +6,7 @@ import { verifySession } from "./lib/session";
  * Routes that require authentication.
  * Any pathname starting with these prefixes is considered protected.
  */
-const PROTECTED_PREFIXES = ["/dashboard", "/admin"];
+const PROTECTED_PREFIXES = ["/dashboard", "/admin", "/medico"];
 
 /**
  * RBAC rules: maps each StaffRole to the routes it is allowed to access.
@@ -15,10 +15,10 @@ const PROTECTED_PREFIXES = ["/dashboard", "/admin"];
  * Rules are evaluated as prefix matches (startsWith).
  */
 const ROLE_ALLOWED_PREFIXES: Record<string, string[]> = {
-    DOCTOR: ["/admin"],
+    DOCTOR: ["/dashboard", "/medico"],
     NURSE: ["/dashboard"],
-    ADMIN: ["/admin", "/dashboard"],
-    MANAGER: ["/admin", "/dashboard"],
+    ADMIN: ["/admin"],
+    MANAGER: ["/admin"],
 };
 
 /** Returns true if the pathname is under one of the protected prefixes. */
@@ -29,7 +29,7 @@ function isProtectedRoute(pathname: string): boolean {
 /** Returns the home route for an authenticated user based on their role. */
 function resolveHomeForRole(role: unknown): string {
     const roleMap: Record<string, string> = {
-        DOCTOR: "/admin",
+        DOCTOR: "/dashboard",
         NURSE: "/dashboard",
         ADMIN: "/admin",
         MANAGER: "/admin",
@@ -43,7 +43,7 @@ function resolveHomeForRole(role: unknown): string {
  */
 function isRoleAllowed(role: unknown, pathname: string): boolean {
     const allowedPrefixes = ROLE_ALLOWED_PREFIXES[role as string];
-    if (!allowedPrefixes) return true; // Unknown role: allow (fail-open in prototype)
+    if (!allowedPrefixes) return false; // Unknown role: deny (fail-closed for security)
     return allowedPrefixes.some((prefix) => pathname.startsWith(prefix));
 }
 
