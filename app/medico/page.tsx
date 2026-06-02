@@ -216,13 +216,6 @@ export default function MedicoDashboardPage() {
                             {profile?.crm} &middot; {profile?.position}
                         </p>
                     </div>
-                    <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-2xl px-5 py-3 border border-white/20 w-fit">
-                        <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                        <div>
-                            <p className="text-xs text-blue-200">Pacientes Ativos</p>
-                            <p className="text-2xl font-extrabold">{kpis?.activePatients ?? 0}</p>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -236,18 +229,18 @@ export default function MedicoDashboardPage() {
                     hint="Registradas no plantão atual"
                 />
                 <KpiCard
-                    label="Pacientes esta Semana"
-                    value={kpis?.patientsThisWeek ?? 0}
-                    icon={Users}
-                    tone="emerald"
-                    hint="Últimos 7 dias"
-                />
-                <KpiCard
                     label="Evoluções no Mês"
                     value={kpis?.evolutionsThisMonth ?? 0}
                     icon={TrendingUp}
                     tone="indigo"
                     hint={new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                />
+                <KpiCard
+                    label="Pacientes esta Semana"
+                    value={kpis?.patientsThisWeek ?? 0}
+                    icon={Users}
+                    tone="emerald"
+                    hint="Últimos 7 dias"
                 />
             </section>
 
