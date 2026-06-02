@@ -31,5 +31,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "uti-clone-v0"]
+  "exclude": ["node_modules", "uti-clone-v0", "prisma"]
 }
