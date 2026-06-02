@@ -6,7 +6,7 @@ const PROTECTED_PREFIXES = ["/dashboard", "/admin", "/medico", "/hospitals", "/s
 
 const ROLE_ALLOWED_PREFIXES: Record<string, string[]> = {
     DOCTOR:  ["/dashboard", "/medico", "/hospitals"],
-    NURSE:   ["/sem-acesso", "/nurse"],
+    NURSE:   ["/dashboard","/sem-acesso", "/nurse", ],
     ADMIN:   ["/admin"],
     MANAGER: ["/admin"],
 };

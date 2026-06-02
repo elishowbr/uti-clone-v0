@@ -396,7 +396,7 @@ export default function HospitalDashboardPage() {
                                                 >
                                                     <Activity className="w-4 h-4" /> Evoluir
                                                 </button>
-                                                {userRole === "DOCTOR" && (
+                                                {userRole === "DOCTOR" &&  (
                                                     <button
                                                         onClick={() => handleDischarge(bed.id)}
                                                         className="px-3 py-2 border border-slate-200 text-slate-500 hover:text-red-600 hover:bg-red-50 hover:border-red-100 rounded-xl transition-all"

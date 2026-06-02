@@ -10,6 +10,8 @@ import {
 import { useParams } from 'next/navigation';
 
 import { getBedDetails, savePatientData } from '../../actions/patientData';
+// 1. Importando a action que busca a permissão do usuário
+import { getCurrentUserRole } from '../../actions/adminData'; 
 import { calculateAge } from './calculateAge';
 import PatientEditModal from './PatientEditModal';
 
@@ -69,6 +71,8 @@ export default function BedDetailsPage() {
     const bedId = Number(params.bedId);
 
     const [data, setData] = useState<any>(null);
+    // 2. Criando o estado para armazenar a role do usuário
+    const [userRole, setUserRole] = useState<string | null>(null); 
     const [loading, setLoading] = useState(true);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -76,11 +80,15 @@ export default function BedDetailsPage() {
     const loadData = async () => {
         if (!bedId) return;
         try {
-            // Se você quiser um loading suave ao recarregar, pode controlar aqui
-            const result = await getBedDetails(bedId);
+            // 3. Executando as duas buscas paralelamente para não perder performance
+            const [result, role] = await Promise.all([
+                getBedDetails(bedId),
+                getCurrentUserRole()
+            ]);
             setData(result);
+            setUserRole(role);
         } catch (error) {
-            console.error("Erro ao carregar leito:", error);
+            console.error("Erro ao carregar dados:", error);
         } finally {
             setLoading(false);
         }
@@ -90,11 +98,8 @@ export default function BedDetailsPage() {
         loadData();
     }, [bedId]);
 
-    // Função que passaremos para o Modal
     const handleSavePatient = async (formData: any) => {
-        // Chama a Server Action
         await savePatientData(bedId, formData);
-        // Recarrega os dados da tela para mostrar as alterações imediatamente
         await loadData();
     };
 
@@ -117,7 +122,6 @@ export default function BedDetailsPage() {
     return (
         <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans">
 
-            {/* Modal de Edição Separado */}
             {patient && (
                 <PatientEditModal
                     patient={patient}
@@ -129,7 +133,6 @@ export default function BedDetailsPage() {
 
             <div className="max-w-7xl mx-auto">
 
-                {/* --- Header Responsivo --- */}
                 <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
                     <div className="flex items-center gap-3">
                         <Link href="/dashboard" className="p-2 bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 rounded-full transition-all shadow-sm">
@@ -149,16 +152,14 @@ export default function BedDetailsPage() {
                     </div>
                 </header>
 
-                {/* --- Conteúdo Principal --- */}
                 {patient ? (
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-                        {/* Coluna Esquerda: Dados e Ações (Ocupa 4/12 colunas no desktop) */}
                         <div className="lg:col-span-4 space-y-6">
 
-                            {/* Card do Paciente */}
                             <div className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 relative group">
-                                {/* Botão de Editar */}
+                                {/* Dica: Se quiser que a enfermeira também não possa EDITAR os dados do paciente, 
+                                    basta colocar um {userRole !== 'NURSE' && (...)} em volta desse botão de edição também! */}
                                 <button
                                     onClick={() => setIsEditModalOpen(true)}
                                     className="absolute top-5 right-5 p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
@@ -189,34 +190,34 @@ export default function BedDetailsPage() {
                                     <div className="flex items-center justify-between text-xs font-medium text-slate-500 px-1">
                                         <div className="flex items-center gap-2">
                                             <Calendar className="w-4 h-4 text-slate-400" />
-                                            <span>Admissão Hospitalar: {patient.arrival_date ? new Date(patient.arrival_date).toLocaleDateString('pt-BR', { timeZone : 'UTC'}) : '-'}</span>
+                                            <span>Admissão Hospitalar: {patient.arrival_date ? new Date(patient.arrival_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-'}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <Calendar className="w-4 h-4 text-slate-400" />
-                                            <span>Entrada na UTI: {new Date(patient.admission_date).toLocaleDateString('pt-BR', { timeZone : 'UTC'})}</span>
+                                            <span>Entrada na UTI: {new Date(patient.admission_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Card de Ações */}
-                            <div className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 sticky top-4">
-                                <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                                    <Activity className="w-4 h-4 text-blue-500" /> Ações Clínicas
-                                </h3>
-                                <div className="grid gap-3">
-                                    <Link
-                                        href={`/dashboard/${bedId}/evolution`}
-                                        className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition-all shadow-md shadow-blue-100 hover:shadow-lg active:scale-[0.98]"
-                                    >
-                                        <Plus className="w-5 h-5" /> Nova Evolução
-                                    </Link>
-
+                            {/* 4. Renderização Condicional: Esconde o card inteiro se for Enfermeiro */}
+                            {userRole !== 'NURSE' && (
+                                <div className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 sticky top-4">
+                                    <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                        <Activity className="w-4 h-4 text-blue-500" /> Ações Clínicas
+                                    </h3>
+                                    <div className="grid gap-3">
+                                        <Link
+                                            href={`/dashboard/${bedId}/evolution`}
+                                            className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition-all shadow-md shadow-blue-100 hover:shadow-lg active:scale-[0.98]"
+                                        >
+                                            <Plus className="w-5 h-5" /> Nova Evolução
+                                        </Link>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
 
-                        {/* Coluna Direita: Acordeão de Evoluções */}
                         <div className="lg:col-span-8">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="font-bold text-slate-700 flex items-center gap-2">
@@ -251,7 +252,6 @@ export default function BedDetailsPage() {
 
                     </div>
                 ) : (
-                    /* Estado de Leito Vago */
                     <div className="flex flex-col items-center justify-center py-20 animate-in fade-in">
                         <div className="bg-white p-8 md:p-12 rounded-3xl shadow-sm border border-slate-200 text-center max-w-lg mx-auto">
                             <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
