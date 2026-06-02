@@ -30,7 +30,7 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 const QUICK_LINKS: NavItem[] = [
-    { href: '/dashboard', label: 'Ir para UTI (Leitos)', icon: Bed },
+    { href: '/hospitals', label: 'Ir para UTI (Leitos)', icon: Bed },
 ];
 
 function isActive(itemHref: string, pathname: string): boolean {

@@ -55,7 +55,7 @@ export default function PatientDetailModal({
         const fullText = bed.current_patient?.commentary || '';
         const parts = fullText.split(/(?=\[Enfermagem - )/g);
         setHistoryText(parts[0].trim());
-        setNurseNotesList(parts.slice(1).map(p => p.trim()).filter(Boolean));
+        setNurseNotesList(parts.slice(1).map((p: string) => p.trim()).filter(Boolean));
 
         setDvaList(bed.clinical_evolutions?.[0]?.hemodynamic_drugs || []);
         setAtbList(bed.clinical_evolutions?.[0]?.hemato_antibiotics || []);

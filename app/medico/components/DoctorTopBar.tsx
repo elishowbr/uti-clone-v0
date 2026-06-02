@@ -15,6 +15,7 @@ function toUserProfileData(profile: DoctorProfile): UserProfileData {
     return {
         id: profile.id,
         name: profile.name,
+        email: profile.email,
         initials: profile.initials,
         crm: profile.crm,
         position: profile.position,

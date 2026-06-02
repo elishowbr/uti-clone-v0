@@ -18,8 +18,9 @@ export async function updatePatientCommentary(patientId: number, newCommentary: 
         let updatedText = newCommentary;
 
         if (isNurseNote) {
-            const dateStr = new Date().toLocaleString('pt-BR');
-            const noteBlock = `\n\n[Enfermagem - ${dateStr}]: ${newCommentary}`;
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const noteBlock = `\n[Enfermagem - ${dateStr}]: ${newCommentary}`;
             updatedText = (patient.commentary || '') + noteBlock;
         }
 

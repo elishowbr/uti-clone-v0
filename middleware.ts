@@ -2,48 +2,45 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifySession } from "./lib/session";
 
-/**
- * Routes that require authentication.
- * Any pathname starting with these prefixes is considered protected.
- */
-const PROTECTED_PREFIXES = ["/dashboard", "/admin", "/medico"];
+const PROTECTED_PREFIXES = ["/dashboard", "/admin", "/medico", "/hospitals", "/sem-acesso"];
 
-/**
- * RBAC rules: maps each StaffRole to the routes it is allowed to access.
- * If a role is not listed, it falls back to its home route.
- *
- * Rules are evaluated as prefix matches (startsWith).
- */
 const ROLE_ALLOWED_PREFIXES: Record<string, string[]> = {
-    DOCTOR: ["/dashboard", "/medico"],
-    NURSE: ["/dashboard"],
-    ADMIN: ["/admin"],
+    DOCTOR:  ["/dashboard", "/medico", "/hospitals"],
+    NURSE:   ["/sem-acesso", "/nurse"],
+    ADMIN:   ["/admin"],
     MANAGER: ["/admin"],
 };
 
 /** Returns true if the pathname is under one of the protected prefixes. */
 function isProtectedRoute(pathname: string): boolean {
-    return PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+    if (PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return true;
+    // Dynamic hospital routes: /123/dashboard, /123/...
+    if (/^\/\d+\//.test(pathname)) return true;
+    return false;
 }
 
 /** Returns the home route for an authenticated user based on their role. */
 function resolveHomeForRole(role: unknown): string {
     const roleMap: Record<string, string> = {
-        DOCTOR: "/dashboard",
-        NURSE: "/dashboard",
-        ADMIN: "/admin",
+        DOCTOR:  "/medico",
+        NURSE:   "/nurse/hospitais",
+        ADMIN:   "/admin",
         MANAGER: "/admin",
     };
-    return roleMap[role as string] ?? "/dashboard";
+    return roleMap[role as string] ?? "/login";
 }
 
 /**
  * Returns true if the given role is allowed to access the given pathname.
- * Defaults to allowing access if the role is not found in the RBAC map.
+ * Fails closed for unknown roles.
  */
 function isRoleAllowed(role: unknown, pathname: string): boolean {
+    // Dynamic hospital routes (e.g., /1/dashboard) — accessible to all staff roles
+    if (/^\/\d+\//.test(pathname)) {
+        return ["DOCTOR", "NURSE", "MANAGER", "ADMIN"].includes(role as string);
+    }
     const allowedPrefixes = ROLE_ALLOWED_PREFIXES[role as string];
-    if (!allowedPrefixes) return false; // Unknown role: deny (fail-closed for security)
+    if (!allowedPrefixes) return false;
     return allowedPrefixes.some((prefix) => pathname.startsWith(prefix));
 }
 

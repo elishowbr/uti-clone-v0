@@ -6,6 +6,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
 }
 
 datasource db {
@@ -34,15 +35,30 @@ model Hospital {
   name           String
   address        String
   description    String?  @db.Text
-  available_beds Int?     // Quantidade estática (opcional, recomenda-se cálculo dinâmico via leitos)
+  available_beds Int?
 
-  // Relacionamento: 1 Hospital possui N Leitos
   beds           Bed[]
+  hospital_users HospitalUser[]
 
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@map("hospitals")
+}
+
+// ============================================
+// MODEL: HospitalUser (vínculo N:N user ↔ hospital)
+// ============================================
+model HospitalUser {
+  hospital_id Int
+  user_id     Int
+  hospital    Hospital @relation(fields: [hospital_id], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  created_at DateTime @default(now())
+
+  @@id([hospital_id, user_id])
+  @@map("hospital_users")
 }
 
 // ============================================
@@ -261,14 +277,16 @@ enum StaffRole {
 // MODEL: User (Autenticação)
 // ============================================
 model User {
-  id         Int       @id @default(autoincrement())
-  name       String
-  email      String    @unique
-  password   String
-  role       StaffRole @default(NURSE)
+  id          Int       @id @default(autoincrement())
+  name        String
+  email       String    @unique
+  password    String
+  role        StaffRole @default(NURSE)
 
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
+  hospital_users HospitalUser[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@map("users")
 }

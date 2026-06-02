@@ -12,6 +12,7 @@ export type DoctorProfile = {
     id: number;
     userId: string;
     name: string;
+    email: string;
     initials: string;
     crm: string;
     position: string;
@@ -88,9 +89,10 @@ export async function getDoctorProfileForPanel(): Promise<DoctorProfile | null> 
         const payload = await verifySession(sessionCookie);
         if (!payload?.userId) return null;
 
-        const doctor = await prisma.doctor.findFirst({
-            where: { user_id: String(payload.userId) },
-        });
+        const [doctor, user] = await Promise.all([
+            prisma.doctor.findFirst({ where: { user_id: String(payload.userId) } }),
+            prisma.user.findUnique({ where: { id: Number(payload.userId) }, select: { email: true } }),
+        ]);
 
         if (!doctor) return null;
 
@@ -104,6 +106,7 @@ export async function getDoctorProfileForPanel(): Promise<DoctorProfile | null> 
             id: doctor.id,
             userId: doctor.user_id,
             name: doctor.name,
+            email: user?.email ?? '',
             initials: initials.toUpperCase(),
             crm: doctor.crm,
             position: doctor.position,
@@ -375,7 +378,67 @@ export async function getDoctorRecentActivity(limit: number = 5): Promise<Doctor
 }
 
 // ============================================================
-// 6. TODOS os pacientes internados na UTI (Relatório clínico)
+// 6. Hospitais disponíveis para o médico (taxa de ocupação real)
+// ============================================================
+
+export type DoctorHospital = {
+    id: number;
+    name: string;
+    address: string;
+    totalBeds: number;
+    occupiedBeds: number;
+    vacantBeds: number;
+};
+
+export async function getDoctorHospitals(): Promise<DoctorHospital[]> {
+    try {
+        const hospitals = await prisma.hospital.findMany({
+            include: { beds: { select: { status: true } } },
+            orderBy: { name: 'asc' },
+        });
+        return hospitals.map(h => ({
+            id: h.id,
+            name: h.name,
+            address: h.address,
+            totalBeds: h.beds.length,
+            occupiedBeds: h.beds.filter(b => b.status === 'OCCUPIED').length,
+            vacantBeds: h.beds.filter(b => b.status === 'VACANT').length,
+        }));
+    } catch (error) {
+        console.error('Erro ao buscar hospitais:', error);
+        return [];
+    }
+}
+
+// ============================================================
+// 7. Hospital principal do médico (último onde trabalhou)
+// ============================================================
+
+export async function getDoctorMainHospital(): Promise<{ id: number; name: string } | null> {
+    try {
+        const doctor = await resolveDoctor();
+        if (!doctor) return null;
+
+        const lastEvo = await prisma.clinicalEvolution.findFirst({
+            where: { doctor_id: doctor.id },
+            orderBy: { created_at: 'desc' },
+            select: {
+                bed: {
+                    select: {
+                        hospital: { select: { id: true, name: true } },
+                    },
+                },
+            },
+        });
+
+        return lastEvo?.bed?.hospital ?? null;
+    } catch {
+        return null;
+    }
+}
+
+// ============================================================
+// 8. TODOS os pacientes internados na UTI (Relatório clínico)
 //    Independente de o médico logado ter evoluído ou não.
 // ============================================================
 export type UtiPatient = {

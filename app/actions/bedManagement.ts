@@ -148,6 +148,74 @@ export async function setBedToCleaning(bedId: number) {
     }
 }
 
+// ─── Hospital-Specific Dashboard Functions ────────────────────────────────────
+
+export async function getHospitalDashboardData(hospitalId: number) {
+    const beds = await prisma.bed.findMany({
+        where: { hospital_id: hospitalId },
+        orderBy: { bed_number: 'asc' },
+        include: {
+            current_patient: true,
+            clinical_evolutions: {
+                take: 1,
+                orderBy: { created_at: 'desc' },
+                select: {
+                    id: true,
+                    created_at: true,
+                    generated_text: true,
+                    hemodynamic_drugs: true,
+                    hemato_antibiotics: true,
+                    respiratory_observation: true,
+                    neurologic_observation: true,
+                },
+            },
+        },
+    });
+    return beds;
+}
+
+export async function createHospitalBed(hospitalId: number) {
+    try {
+        const existingBeds = await prisma.bed.findMany({
+            where: { hospital_id: hospitalId },
+            select: { bed_number: true },
+        });
+        const nextNum = existingBeds.length > 0
+            ? Math.max(...existingBeds.map(b => b.bed_number)) + 1
+            : 1;
+
+        await prisma.bed.create({
+            data: {
+                bed_number: nextNum,
+                label: `Leito ${nextNum < 10 ? '0' + nextNum : nextNum}`,
+                type: 'UTI Geral',
+                status: 'VACANT',
+                hospital_id: hospitalId,
+            },
+        });
+        revalidatePath(`/${hospitalId}/dashboard`);
+        return { success: true };
+    } catch (error) {
+        console.error('Erro ao criar leito:', error);
+        return { success: false, error: 'Erro ao criar leito' };
+    }
+}
+
+export async function deleteHospitalBed(bedId: number, hospitalId: number) {
+    try {
+        const bed = await prisma.bed.findUnique({ where: { id: bedId } });
+        if (!bed) return { success: false, error: 'Leito não encontrado' };
+        if (bed.status === 'OCCUPIED') return { success: false, error: 'Não é possível excluir um leito ocupado.' };
+
+        await prisma.bed.delete({ where: { id: bedId } });
+        revalidatePath(`/${hospitalId}/dashboard`);
+        return { success: true };
+    } catch (error) {
+        console.error(error);
+        return { success: false, error: 'Erro ao excluir. O leito pode ter histórico clínico vinculado.' };
+    }
+}
+
 export async function deleteBed(bedId: number) {
     try {
         // Verificação de segurança: O leito deve estar vazio

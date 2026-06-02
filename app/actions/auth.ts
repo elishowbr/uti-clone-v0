@@ -15,23 +15,23 @@ import type { StaffRole } from "@/app/generated/prisma";
  * - MANAGER → /admin     (painel do gestor hospitalar)
  */
 const ROLE_REDIRECT: Record<StaffRole, string> = {
-    DOCTOR: "/medico",
-    NURSE: "/dashboard",
-    ADMIN: "/admin",
+    DOCTOR:  "/medico",
+    NURSE:   "/sem-acesso",
+    ADMIN:   "/admin",
     MANAGER: "/admin",
 };
 
 export async function login(prevState: any, formData: FormData) {
-    const email = formData.get("email") as string;
+    const email    = formData.get("email")    as string;
     const password = formData.get("password") as string;
 
     if (!email || !password) {
         return { error: "Email e senha são obrigatórios" };
     }
 
-    // user from db
     const user = await prisma.user.findUnique({
         where: { email },
+        select: { id: true, password: true, role: true },
     });
 
     if (!user || !user.password) {
@@ -39,15 +39,22 @@ export async function login(prevState: any, formData: FormData) {
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
-
     if (!isPasswordValid) {
         return { error: "Credenciais inválidas" };
     }
 
-    // Passa o role do usuário para a sessão JWT (habilita RBAC no middleware)
     await createSession(String(user.id), user.role);
 
-    // Redireciona com base na categoria do usuário
+    if (user.role === "NURSE") {
+        const links = await prisma.hospitalUser.findMany({
+            where: { user_id: user.id },
+            select: { hospital_id: true },
+        });
+        if (links.length === 0) redirect("/sem-acesso");
+        if (links.length === 1) redirect(`/${links[0].hospital_id}/dashboard`);
+        redirect("/nurse/hospitais");
+    }
+
     redirect(ROLE_REDIRECT[user.role] ?? "/dashboard");
 }
 
