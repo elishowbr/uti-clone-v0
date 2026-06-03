@@ -65,11 +65,12 @@ model HospitalUser {
 // MODEL: Doctor
 // ============================================
 model Doctor {
-  id       Int    @id @default(autoincrement())
-  user_id  String @unique
+  id       Int     @id @default(autoincrement())
+  user_id  String  @unique
   name     String
   crm      String
   position String
+  active   Boolean @default(true)
 
   // Relações
   clinical_evolutions ClinicalEvolution[]
@@ -282,6 +283,7 @@ model User {
   email       String    @unique
   password    String
   role        StaffRole @default(NURSE)
+  active      Boolean   @default(true)
 
   hospital_users HospitalUser[]
 

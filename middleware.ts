@@ -5,10 +5,10 @@ import { verifySession } from "./lib/session";
 const PROTECTED_PREFIXES = ["/dashboard", "/admin", "/medico", "/hospitals", "/sem-acesso"];
 
 const ROLE_ALLOWED_PREFIXES: Record<string, string[]> = {
-    DOCTOR:  ["/dashboard", "/medico", "/hospitals"],
+    DOCTOR:  ["/dashboard", "/medico"],
     NURSE:   ["/dashboard","/sem-acesso", "/nurse", ],
-    ADMIN:   ["/admin"],
-    MANAGER: ["/admin"],
+    ADMIN:   ["/admin", "/hospitals"],
+    MANAGER: ["/admin", "/hospitals"],
 };
 
 /** Returns true if the pathname is under one of the protected prefixes. */

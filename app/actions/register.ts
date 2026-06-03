@@ -92,13 +92,24 @@ export async function register(
     // --- Criar usuário ---
     const passwordHash = await bcrypt.hash(password, 10);
 
-    await prisma.user.create({
+    const user = await prisma.user.create({
         data: {
             name: fullName,
             email,
             password: passwordHash,
             role,
         },
+    });
+
+    // Create a clinical/professional profile (Doctor table) for the new user
+    // This ensures personalized data appears correctly in the dashboard (/medico)
+    await prisma.doctor.create({
+        data: {
+            user_id: String(user.id),
+            name: fullName,
+            crm: role === "NURSE" ? "COREN pendente" : (role === "DOCTOR" ? "CRM pendente" : "-"),
+            position: ROLE_LABELS[role],
+        }
     });
 
     return {

@@ -276,40 +276,6 @@ export async function getCurrentUserRole(): Promise<string | null> {
 // 6. CRUD de Hospitais
 // ============================================
 
-export type HospitalData = {
-    id: number;
-    name: string;
-    address: string;
-    description: string | null;
-    available_beds: number | null;
-    totalBeds: number;
-    occupiedBeds: number;
-    vacantBeds: number;
-};
-
-export async function getHospitals(): Promise<HospitalData[]> {
-    try {
-        const hospitals = await prisma.hospital.findMany({
-            include: {
-                beds: { select: { status: true } },
-            },
-            orderBy: { name: 'asc' },
-        });
-        return hospitals.map(h => ({
-            id: h.id,
-            name: h.name,
-            address: h.address,
-            description: h.description,
-            available_beds: h.available_beds,
-            totalBeds: h.beds.length,
-            occupiedBeds: h.beds.filter(b => b.status === 'OCCUPIED').length,
-            vacantBeds: h.beds.filter(b => b.status === 'VACANT').length,
-        }));
-    } catch (error) {
-        console.error('Erro ao buscar hospitais:', error);
-        return [];
-    }
-}
 
 export async function createHospital(data: {
     name: string;
@@ -434,88 +400,7 @@ export async function deleteHospital(hospitalId: number): Promise<{ success: boo
     }
 }
 
-// ============================================
-// 7. Membros da equipe de um hospital
-// ============================================
 
-export type HospitalStaffMember = {
-    id: number;
-    name: string;
-    email: string;
-    role: string;
-    initials: string;
-};
-
-export async function getHospitalStaff(hospitalId: number): Promise<HospitalStaffMember[]> {
-    try {
-        const records = await prisma.hospitalUser.findMany({
-            where: { hospital_id: hospitalId },
-            include: {
-                user: { select: { id: true, name: true, email: true, role: true } },
-            },
-            orderBy: [{ user: { role: 'asc' } }, { user: { name: 'asc' } }],
-        });
-        return records.map(r => {
-            const u = r.user;
-            const parts = u.name.trim().split(' ');
-            const initials = parts.length >= 2
-                ? `${parts[0][0]}${parts[parts.length - 1][0]}`
-                : u.name.substring(0, 2);
-            return { id: u.id, name: u.name, email: u.email, role: u.role, initials: initials.toUpperCase() };
-        });
-    } catch (error) {
-        console.error('Erro ao buscar equipe do hospital:', error);
-        return [];
-    }
-}
-
-export async function assignStaffToHospital(
-    email: string,
-    hospitalId: number,
-): Promise<{ success: boolean; error?: string }> {
-    try {
-        const user = await prisma.user.findUnique({
-            where: { email: email.trim().toLowerCase() },
-            select: { id: true, role: true },
-        });
-
-        if (!user) return { success: false, error: 'Nenhum usuário encontrado com este e-mail.' };
-        if (user.role === 'ADMIN' || user.role === 'MANAGER') {
-            return { success: false, error: 'Gestores e administradores não podem ser vinculados a hospitais.' };
-        }
-
-        const existing = await prisma.hospitalUser.findUnique({
-            where: { hospital_id_user_id: { hospital_id: hospitalId, user_id: user.id } },
-        });
-        if (existing) return { success: false, error: 'Este usuário já está vinculado a este hospital.' };
-
-        await prisma.hospitalUser.create({
-            data: { user_id: user.id, hospital_id: hospitalId },
-        });
-
-        revalidatePath('/admin');
-        return { success: true };
-    } catch (error) {
-        console.error('Erro ao vincular usuário:', error);
-        return { success: false, error: 'Falha ao vincular usuário.' };
-    }
-}
-
-export async function removeStaffFromHospital(
-    userId: number,
-    hospitalId: number,
-): Promise<{ success: boolean; error?: string }> {
-    try {
-        await prisma.hospitalUser.delete({
-            where: { hospital_id_user_id: { hospital_id: hospitalId, user_id: userId } },
-        });
-        revalidatePath('/admin');
-        return { success: true };
-    } catch (error) {
-        console.error('Erro ao remover usuário do hospital:', error);
-        return { success: false, error: 'Falha ao remover usuário.' };
-    }
-}
 
 // ============================================
 // 8. Todos os membros cadastrados (lista geral)
@@ -574,6 +459,7 @@ export async function getNurseHospitals(): Promise<NurseHospital[]> {
 export async function getTeamMembers(): Promise<TeamMember[]> {
     try {
         const users = await prisma.user.findMany({
+            where: { active: true },
             orderBy: [{ role: 'asc' }, { name: 'asc' }],
             select: { id: true, name: true, email: true, role: true },
         });
@@ -593,5 +479,202 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
     } catch (error) {
         console.error('Erro ao buscar membros da equipe:', error);
         return [];
+    }
+}
+export type DoctorData = {
+    id: number;
+    userId: number;
+    name: string;
+    email: string;
+    crm: string;
+    position: string;
+    initials: string;
+};
+
+export async function getAllDoctors(): Promise<DoctorData[]> {
+    try {
+        const doctors = await prisma.doctor.findMany({
+            orderBy: { name: 'asc' },
+        });
+
+        const userIds = doctors.map(d => Number(d.user_id)).filter(id => !isNaN(id));
+
+        const users = await prisma.user.findMany({
+            where: { id: { in: userIds }, active: true },
+            select: { id: true, email: true },
+        });
+
+        const userEmailMap = new Map(users.map(u => [String(u.id), u.email]));
+
+        // Filter out doctors whose users are inactive
+        const activeDoctors = doctors.filter(d => userEmailMap.has(String(d.user_id)));
+
+        return activeDoctors.map(d => {
+            const parts = d.name.trim().split(' ');
+            const initials = parts.length >= 2
+                ? `${parts[0][0]}${parts[parts.length - 1][0]}`
+                : d.name.substring(0, 2);
+            return {
+                id: d.id,
+                userId: Number(d.user_id),
+                name: d.name,
+                email: userEmailMap.get(d.user_id) ?? '',
+                crm: d.crm,
+                position: d.position,
+                initials: initials.toUpperCase(),
+            };
+        });
+    } catch (error) {
+        console.error('Erro ao buscar médicos:', error);
+        return [];
+    }
+}
+
+export async function deleteTeamMember(userId: number): Promise<{ success: boolean; error?: string }> {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true },
+        });
+
+        if (!user) {
+            return { success: false, error: 'Usuário não encontrado.' };
+        }
+
+        if (user.role === 'ADMIN') {
+            return { success: false, error: 'Não é possível excluir um Administrador principal.' };
+        }
+
+        // --- SOFT DELETE ---
+        await prisma.user.update({
+            where: { id: userId },
+            data: { active: false },
+        });
+
+        // Removemos o vínculo com os hospitais para que ele perca qualquer acesso residual
+        await prisma.hospitalUser.deleteMany({
+            where: { user_id: userId },
+        });
+
+        revalidatePath('/admin');
+        return { success: true };
+    } catch (error) {
+        console.error('Erro ao excluir usuário:', error);
+        return { success: false, error: 'Falha ao excluir usuário.' };
+    }
+}
+
+// ============================================
+// 8. Designação de Equipes aos Hospitais
+// ============================================
+
+export type HospitalData = {
+    id: number;
+    name: string;
+    address: string;
+    totalBeds: number;
+    occupiedBeds: number;
+    vacantBeds: number;
+};
+
+export type HospitalStaffMember = {
+    id: number;
+    name: string;
+    role: string;
+    email: string;
+};
+
+export async function getHospitals(): Promise<HospitalData[]> {
+    try {
+        const hospitals = await prisma.hospital.findMany({
+            include: { beds: { select: { status: true } } },
+            orderBy: { name: 'asc' },
+        });
+        return hospitals.map(h => ({
+            id: h.id,
+            name: h.name,
+            address: h.address,
+            totalBeds: h.beds.length,
+            occupiedBeds: h.beds.filter(b => b.status === 'OCCUPIED').length,
+            vacantBeds: h.beds.filter(b => b.status === 'VACANT').length,
+        }));
+    } catch (error) {
+        console.error('Erro ao buscar hospitais:', error);
+        return [];
+    }
+}
+
+export async function getHospitalStaff(hospitalId: number): Promise<HospitalStaffMember[]> {
+    try {
+        const staff = await prisma.hospitalUser.findMany({
+            where: { hospital_id: hospitalId },
+            include: {
+                user: { select: { id: true, name: true, role: true, email: true } },
+            },
+        });
+        return staff.map(s => ({
+            id: s.user.id,
+            name: s.user.name,
+            role: s.user.role,
+            email: s.user.email,
+        }));
+    } catch (error) {
+        console.error('Erro ao buscar equipe do hospital:', error);
+        return [];
+    }
+}
+
+export async function assignStaffToHospital(email: string, hospitalId: number): Promise<{ success: boolean; error?: string }> {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { email },
+        });
+
+        if (!user) {
+            return { success: false, error: 'Usuário com este e-mail não encontrado.' };
+        }
+
+        // Verifica se já está vinculado
+        const existing = await prisma.hospitalUser.findUnique({
+            where: {
+                hospital_id_user_id: {
+                    hospital_id: hospitalId,
+                    user_id: user.id,
+                },
+            },
+        });
+
+        if (existing) {
+            return { success: false, error: 'Usuário já está vinculado a este hospital.' };
+        }
+
+        await prisma.hospitalUser.create({
+            data: {
+                hospital_id: hospitalId,
+                user_id: user.id,
+            },
+        });
+
+        return { success: true };
+    } catch (error) {
+        console.error('Erro ao vincular equipe:', error);
+        return { success: false, error: 'Falha ao vincular usuário.' };
+    }
+}
+
+export async function removeStaffFromHospital(userId: number, hospitalId: number): Promise<{ success: boolean; error?: string }> {
+    try {
+        await prisma.hospitalUser.delete({
+            where: {
+                hospital_id_user_id: {
+                    hospital_id: hospitalId,
+                    user_id: userId,
+                },
+            },
+        });
+        return { success: true };
+    } catch (error) {
+        console.error('Erro ao remover equipe:', error);
+        return { success: false, error: 'Falha ao remover usuário do hospital.' };
     }
 }
