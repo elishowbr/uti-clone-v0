@@ -101,6 +101,7 @@ export async function getDoctorProfile(): Promise<AdminDoctorProfile | null> {
 export async function getAdminKpis(): Promise<AdminKpis> {
     try {
         const beds = await prisma.bed.findMany({
+            where: { hospital: { active: true } },
             select: { status: true, current_patient_id: true },
         });
 
@@ -315,10 +316,50 @@ export async function createHospital(data: {
         }
 
         revalidatePath('/admin');
+        revalidatePath('/admin/hospitais');
         return { success: true };
     } catch (error) {
         console.error('Erro ao criar hospital:', error);
         return { success: false, error: 'Falha ao criar hospital.' };
+    }
+}
+
+export async function updateHospital(
+    id: number,
+    data: {
+        name: string;
+        address: string;
+        description?: string;
+    }
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        if (!data.name?.trim() || !data.address?.trim()) {
+            return { success: false, error: 'Nome e endereço são obrigatórios.' };
+        }
+
+        const hospital = await prisma.hospital.findUnique({
+            where: { id },
+        });
+
+        if (!hospital || !hospital.active) {
+            return { success: false, error: 'Hospital não encontrado.' };
+        }
+
+        await prisma.hospital.update({
+            where: { id },
+            data: {
+                name: data.name.trim(),
+                address: data.address.trim(),
+                description: data.description?.trim() || null,
+            },
+        });
+
+        revalidatePath('/admin');
+        revalidatePath('/admin/hospitais');
+        return { success: true };
+    } catch (error) {
+        console.error('Erro ao atualizar hospital:', error);
+        return { success: false, error: 'Falha ao atualizar hospital.' };
     }
 }
 
@@ -399,6 +440,7 @@ export async function deleteHospital(hospitalId: number): Promise<{ success: boo
         });
         
         revalidatePath('/admin');
+        revalidatePath('/admin/hospitais');
         return { success: true };
     } catch (error) {
         console.error('Erro ao excluir hospital:', error);
