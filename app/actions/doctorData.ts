@@ -91,7 +91,7 @@ export async function getDoctorProfileForPanel(): Promise<DoctorProfile | null> 
 
     const [doctor, user] = await Promise.all([
         prisma.doctor.findFirst({ where: { user_id: String(payload.userId) } }),
-        prisma.user.findUnique({ where: { id: Number(payload.userId) }, select: { email: true, name: true, role: true } }),
+        prisma.user.findUnique({ where: { id: Number(payload.userId) }, select: { id: true, email: true, name: true, role: true } }),
     ]);
 
     if (!user) return null;

@@ -24,12 +24,11 @@ function ToastNotification({ toast, onClose }: { toast: Toast; onClose: () => vo
     if (!toast) return null;
     return (
         <aside aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-6 flex justify-center px-4 z-50">
-            <div className={`pointer-events-auto rounded-2xl shadow-2xl px-5 py-3 flex items-center gap-3 max-w-sm animate-in fade-in slide-in-from-bottom-4 ${
-                toast.type === "success" ? "bg-slate-900 text-white" : "bg-red-600 text-white"
-            }`}>
+            <div className={`pointer-events-auto rounded-2xl shadow-2xl px-5 py-3 flex items-center gap-3 max-w-sm animate-in fade-in slide-in-from-bottom-4 ${toast.type === "success" ? "bg-slate-900 text-white" : "bg-red-600 text-white"
+                }`}>
                 {toast.type === "success"
                     ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    : <AlertCircle  className="w-4 h-4 text-red-200    shrink-0" />}
+                    : <AlertCircle className="w-4 h-4 text-red-200    shrink-0" />}
                 <span className="text-sm font-medium flex-1">{toast.message}</span>
                 <button onClick={onClose} className="text-white/60 hover:text-white text-lg font-bold ml-1">×</button>
             </div>
@@ -41,12 +40,12 @@ const INPUT = "w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:b
 
 // ─── Role badges ──────────────────────────────────────────────────────────────
 
-const ROLE_LABEL:  Record<string, string> = { DOCTOR: "Médico", NURSE: "Enfermeiro", MANAGER: "Gestor", ADMIN: "Admin" };
+const ROLE_LABEL: Record<string, string> = { DOCTOR: "Médico", NURSE: "Enfermeiro", MANAGER: "Gestor", ADMIN: "Admin" };
 const ROLE_COLORS: Record<string, string> = {
-    DOCTOR:  "bg-blue-100    text-blue-700    border-blue-200",
-    NURSE:   "bg-emerald-100 text-emerald-700 border-emerald-200",
+    DOCTOR: "bg-blue-100    text-blue-700    border-blue-200",
+    NURSE: "bg-emerald-100 text-emerald-700 border-emerald-200",
     MANAGER: "bg-indigo-100  text-indigo-700  border-indigo-200",
-    ADMIN:   "bg-amber-100   text-amber-700   border-amber-200",
+    ADMIN: "bg-amber-100   text-amber-700   border-amber-200",
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -55,15 +54,15 @@ const ROLE_COLORS: Record<string, string> = {
 
 function HospitalSection({ onToast }: { onToast: (msg: string, type?: "success" | "error") => void }) {
     const [hospitals, setHospitals] = useState<HospitalData[]>([]);
-    const [loading,   setLoading]   = useState(true);
+    const [loading, setLoading] = useState(true);
 
     // form
-    const [name,        setName]        = useState("");
-    const [address,     setAddress]     = useState("");
+    const [name, setName] = useState("");
+    const [address, setAddress] = useState("");
     const [description, setDescription] = useState("");
-    const [bedCount,    setBedCount]    = useState("");
-    const [submitting,  setSubmitting]  = useState(false);
-    const [formError,   setFormError]   = useState<string | null>(null);
+    const [bedCount, setBedCount] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+    const [formError, setFormError] = useState<string | null>(null);
 
     const load = useCallback(async () => {
         setHospitals(await getHospitals());
@@ -221,15 +220,15 @@ function HospitalSection({ onToast }: { onToast: (msg: string, type?: "success" 
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function StaffSection({ onToast }: { onToast: (msg: string, type?: "success" | "error") => void }) {
-    const [hospitals,      setHospitals]      = useState<HospitalData[]>([]);
+    const [hospitals, setHospitals] = useState<HospitalData[]>([]);
     const [selectedHospId, setSelectedHospId] = useState<number | null>(null);
-    const [staff,          setStaff]          = useState<HospitalStaffMember[]>([]);
-    const [loadingHosps,   setLoadingHosps]   = useState(true);
-    const [loadingStaff,   setLoadingStaff]   = useState(false);
+    const [staff, setStaff] = useState<HospitalStaffMember[]>([]);
+    const [loadingHosps, setLoadingHosps] = useState(true);
+    const [loadingStaff, setLoadingStaff] = useState(false);
 
-    const [email,       setEmail]       = useState("");
-    const [submitting,  setSubmitting]  = useState(false);
-    const [formError,   setFormError]   = useState<string | null>(null);
+    const [email, setEmail] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+    const [formError, setFormError] = useState<string | null>(null);
 
     useEffect(() => {
         getHospitals().then(h => { setHospitals(h); setLoadingHosps(false); });
@@ -294,11 +293,10 @@ function StaffSection({ onToast }: { onToast: (msg: string, type?: "success" | "
                     ) : (
                         hospitals.map(h => (
                             <button key={h.id} onClick={() => handleSelectHospital(h.id)}
-                                className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left ${
-                                    selectedHospId === h.id
+                                className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left ${selectedHospId === h.id
                                         ? "border-blue-300 bg-blue-50"
                                         : "border-slate-100 hover:border-blue-100 hover:bg-slate-50"
-                                }`}>
+                                    }`}>
                                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${selectedHospId === h.id ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"}`}>
                                     <Building2 className="w-4 h-4" />
                                 </div>
@@ -374,9 +372,7 @@ function StaffSection({ onToast }: { onToast: (msg: string, type?: "success" | "
                                 <div className="space-y-2 max-h-72 overflow-y-auto">
                                     {staff.map(member => (
                                         <div key={member.id} className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors">
-                                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 text-white flex items-center justify-center text-xs font-bold shrink-0">
-                                                {member.initials}
-                                            </div>
+
                                             <div className="min-w-0 flex-1">
                                                 <p className="text-sm font-semibold text-slate-800 truncate">{member.name}</p>
                                                 <p className="text-[11px] text-slate-400 truncate">{member.email}</p>
