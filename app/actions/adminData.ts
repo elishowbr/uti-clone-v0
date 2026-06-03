@@ -385,13 +385,19 @@ export async function deleteHospital(hospitalId: number): Promise<{ success: boo
     try {
         const hospital = await prisma.hospital.findUnique({
             where: { id: hospitalId },
-            include: { beds: { where: { status: 'OCCUPIED' } } },
+            include: { beds: { where: { current_patient_id: { not: null } } } },
         });
-        if (!hospital) return { success: false, error: 'Hospital não encontrado.' };
+        if (!hospital || !hospital.active) return { success: false, error: 'Hospital não encontrado.' };
         if (hospital.beds.length > 0) {
-            return { success: false, error: 'Não é possível excluir: há leitos ocupados nesta unidade.' };
+            return { success: false, error: 'Não é possível excluir: há pacientes internados nesta unidade.' };
         }
-        await prisma.hospital.delete({ where: { id: hospitalId } });
+        
+        // Soft delete the hospital
+        await prisma.hospital.update({
+            where: { id: hospitalId },
+            data: { active: false },
+        });
+        
         revalidatePath('/admin');
         return { success: true };
     } catch (error) {
@@ -434,7 +440,7 @@ export async function getNurseHospitals(): Promise<NurseHospital[]> {
         if (!payload?.userId) return [];
 
         const records = await prisma.hospitalUser.findMany({
-            where: { user_id: Number(payload.userId) },
+            where: { user_id: Number(payload.userId), hospital: { active: true } },
             include: {
                 hospital: {
                     include: { beds: { select: { status: true } } },
@@ -587,6 +593,7 @@ export type HospitalStaffMember = {
 export async function getHospitals(): Promise<HospitalData[]> {
     try {
         const hospitals = await prisma.hospital.findMany({
+            where: { active: true },
             include: { beds: { select: { status: true } } },
             orderBy: { name: 'asc' },
         });

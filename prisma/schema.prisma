@@ -42,6 +42,7 @@ model Hospital {
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+  active     Boolean  @default(true)
 
   @@map("hospitals")
 }

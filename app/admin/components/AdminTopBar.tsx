@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Bell, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import { getDoctorProfile, type AdminDoctorProfile } from "../../actions/adminData";
 import UserProfileDropdown from "@/app/components/UserProfileDropdown";
 
@@ -39,15 +39,7 @@ export default function AdminTopBar({ onToggleSidebar }: AdminTopBarProps) {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <button
-                        type="button"
-                        title="Notificações"
-                        aria-label="Notificações"
-                        className="relative p-2.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-slate-200 hover:border-blue-100 rounded-xl transition-all"
-                    >
-                        <Bell className="w-4 h-4" />
-                        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-                    </button>
+
                     <div className="pl-3 border-l border-slate-100">
                         <UserProfileDropdown profile={profile} />
                     </div>
