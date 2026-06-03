@@ -15,25 +15,25 @@ import {
 
 const INPUT = "w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm text-slate-800 placeholder:text-slate-400 disabled:opacity-60";
 
-const ROLE_LABEL:  Record<string, string> = { DOCTOR: "Médico", NURSE: "Enfermeiro", MANAGER: "Gestor", ADMIN: "Admin" };
+const ROLE_LABEL: Record<string, string> = { DOCTOR: "Médico", NURSE: "Enfermeiro", MANAGER: "Gestor", ADMIN: "Admin" };
 const ROLE_COLORS: Record<string, string> = {
-    DOCTOR:  "bg-blue-100    text-blue-700    border-blue-200",
-    NURSE:   "bg-emerald-100 text-emerald-700 border-emerald-200",
+    DOCTOR: "bg-blue-100    text-blue-700    border-blue-200",
+    NURSE: "bg-emerald-100 text-emerald-700 border-emerald-200",
     MANAGER: "bg-indigo-100  text-indigo-700  border-indigo-200",
-    ADMIN:   "bg-amber-100   text-amber-700   border-amber-200",
+    ADMIN: "bg-amber-100   text-amber-700   border-amber-200",
 };
 
 export default function EquipePage() {
-    const [hospitals,      setHospitals]      = useState<HospitalData[]>([]);
+    const [hospitals, setHospitals] = useState<HospitalData[]>([]);
     const [selectedHospId, setSelectedHospId] = useState<number | null>(null);
-    const [staff,          setStaff]          = useState<HospitalStaffMember[]>([]);
-    const [loadingHosps,   setLoadingHosps]   = useState(true);
-    const [loadingStaff,   setLoadingStaff]   = useState(false);
+    const [staff, setStaff] = useState<HospitalStaffMember[]>([]);
+    const [loadingHosps, setLoadingHosps] = useState(true);
+    const [loadingStaff, setLoadingStaff] = useState(false);
 
-    const [email,      setEmail]      = useState("");
+    const [email, setEmail] = useState("");
     const [submitting, setSubmitting] = useState(false);
-    const [formError,  setFormError]  = useState<string | null>(null);
-    const [toast,      setToast]      = useState<{ type: "success" | "error"; msg: string } | null>(null);
+    const [formError, setFormError] = useState<string | null>(null);
+    const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
     useEffect(() => {
         getHospitals().then(h => { setHospitals(h); setLoadingHosps(false); });
@@ -99,11 +99,10 @@ export default function EquipePage() {
 
             {/* Inline toast */}
             {toast && (
-                <div className={`mb-5 flex items-center gap-2 p-3.5 rounded-xl text-sm font-medium border ${
-                    toast.type === "success"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : "bg-red-50 text-red-700 border-red-200"
-                }`}>
+                <div className={`mb-5 flex items-center gap-2 p-3.5 rounded-xl text-sm font-medium border ${toast.type === "success"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-red-50 text-red-700 border-red-200"
+                    }`}>
                     {toast.msg}
                 </div>
             )}
@@ -127,11 +126,10 @@ export default function EquipePage() {
                         ) : (
                             hospitals.map(h => (
                                 <button key={h.id} onClick={() => handleSelect(h.id)}
-                                    className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left ${
-                                        selectedHospId === h.id
-                                            ? "border-blue-300 bg-blue-50"
-                                            : "border-slate-100 hover:border-blue-100 hover:bg-slate-50"
-                                    }`}>
+                                    className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left ${selectedHospId === h.id
+                                        ? "border-blue-300 bg-blue-50"
+                                        : "border-slate-100 hover:border-blue-100 hover:bg-slate-50"
+                                        }`}>
                                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${selectedHospId === h.id ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"}`}>
                                         <Building2 className="w-4 h-4" />
                                     </div>
@@ -204,9 +202,6 @@ export default function EquipePage() {
                                     <div className="space-y-2 max-h-80 overflow-y-auto">
                                         {staff.map(member => (
                                             <div key={member.id} className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors">
-                                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 text-white flex items-center justify-center text-xs font-bold shrink-0">
-                                                    {member.initials}
-                                                </div>
                                                 <div className="min-w-0 flex-1">
                                                     <p className="text-sm font-semibold text-slate-800 truncate">{member.name}</p>
                                                     <p className="text-[11px] text-slate-400 truncate">{member.email}</p>

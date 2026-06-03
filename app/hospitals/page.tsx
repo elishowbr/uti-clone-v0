@@ -67,10 +67,6 @@ function HospitalCard({ hospital, onSelect }: { hospital: HospitalData; onSelect
                 </span>
             </div>
 
-            {hospital.description && (
-                <p className="text-xs text-slate-500 line-clamp-2">{hospital.description}</p>
-            )}
-
             <div className="bg-slate-50 rounded-xl border border-slate-100 p-3 grid grid-cols-3 gap-2 text-center text-xs">
                 <div>
                     <div className="font-extrabold text-slate-800 text-base">{hospital.totalBeds}</div>

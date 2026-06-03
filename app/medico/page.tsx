@@ -338,15 +338,6 @@ export default function MedicoDashboardPage() {
                             onEvoClick={setSelectedEvo}
                         />
                     )}
-                    {activeTab === 'hospitals' && (
-                        <TabHospitals
-                            hospitals={hospitals}
-                            onAccess={id => router.push(`/${id}/dashboard`)}
-                        />
-                    )}
-                    {activeTab === 'history' && (
-                        <TabHistory onEvoClick={setSelectedEvo} />
-                    )}
                     {activeTab === 'quick' && (
                         <TabQuick
                             mainHospital={mainHospital}
