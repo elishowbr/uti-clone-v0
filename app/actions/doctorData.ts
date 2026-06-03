@@ -450,6 +450,7 @@ export async function getDoctorHospitals(): Promise<DoctorHospital[]> {
 
         const hospitals = await prisma.hospital.findMany({
             where: {
+                active: true,
                 hospital_users: {
                     some: { user_id: userId }
                 }
