@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Building2, LogOut, Users, X } from "lucide-react";
+import { Activity, Building2, LogOut, Users, X, Contact, Bed } from "lucide-react";
 import { getDoctorProfile, type AdminDoctorProfile } from "../../actions/adminData";
 
 export default function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
@@ -15,6 +15,7 @@ export default function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onC
     const navItems = [
         { href: "/admin", label: "Hospitais",      icon: Building2 },
         { href: "/admin/equipe", label: "Equipe",  icon: Users     },
+        { href: "/admin/funcionarios", label: "Funcionários", icon: Contact },
     ];
 
     return (

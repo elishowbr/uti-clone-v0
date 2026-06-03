@@ -14,6 +14,7 @@ import {
     X,
     ChevronLeft,
     ChevronRight,
+    UserCircle,
 } from 'lucide-react';
 import { getDoctorProfileForPanel, type DoctorProfile } from '../../actions/doctorData';
 
@@ -27,11 +28,10 @@ const NAV_ITEMS: NavItem[] = [
     { href: '/medico', label: 'Visão Geral', icon: LayoutDashboard },
     { href: '/medico/hospitals', label: 'Meus Hospitais', icon: Users },
     { href: '/medico/evolutions', label: 'Histórico de Evoluções', icon: ClipboardList },
+    { href: '/medico/perfil', label: 'Meus Dados', icon: UserCircle },
 ];
 
-const QUICK_LINKS: NavItem[] = [
-    { href: '/hospitals', label: 'Ir para UTI (Leitos)', icon: Bed },
-];
+
 
 function isActive(itemHref: string, pathname: string): boolean {
     if (itemHref === '/medico') return pathname === '/medico';
@@ -128,30 +128,6 @@ export default function DoctorSidebar({ isOpen, onClose }: Props) {
                                     {active && !isCollapsed && (
                                         <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-600 transition-all duration-300" />
                                     )}
-                                </Link>
-                            );
-                        })}
-                    </div>
-
-                    {/* Acesso rápido */}
-                    <div className="space-y-1">
-                        <div className={`px-3 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider transition-opacity duration-300 ${isCollapsed ? 'lg:opacity-0 lg:h-0 lg:pb-0' : 'opacity-100'}`}>
-                            Acesso Rápido
-                        </div>
-                        {QUICK_LINKS.map((item) => {
-                            const Icon = item.icon;
-                            return (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    onClick={onClose}
-                                    title={isCollapsed ? item.label : undefined}
-                                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 transition-all group"
-                                >
-                                    <Icon className="w-4 h-4 text-slate-400 group-hover:text-emerald-500 shrink-0" />
-                                    <span className={`transition-opacity duration-300 whitespace-nowrap ${isCollapsed ? 'lg:opacity-0 lg:w-0 lg:pointer-events-none' : 'opacity-100'}`}>
-                                        {item.label}
-                                    </span>
                                 </Link>
                             );
                         })}

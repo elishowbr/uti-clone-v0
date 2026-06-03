@@ -89,31 +89,80 @@ export async function getDoctorProfileForPanel(): Promise<DoctorProfile | null> 
         const payload = await verifySession(sessionCookie);
         if (!payload?.userId) return null;
 
-        const [doctor, user] = await Promise.all([
-            prisma.doctor.findFirst({ where: { user_id: String(payload.userId) } }),
-            prisma.user.findUnique({ where: { id: Number(payload.userId) }, select: { email: true } }),
-        ]);
+    const [doctor, user] = await Promise.all([
+        prisma.doctor.findFirst({ where: { user_id: String(payload.userId) } }),
+        prisma.user.findUnique({ where: { id: Number(payload.userId) }, select: { email: true, name: true, role: true } }),
+    ]);
 
-        if (!doctor) return null;
+    if (!user) return null;
 
-        const nameParts = doctor.name.trim().split(' ');
-        const initials =
-            nameParts.length >= 2
-                ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
-                : doctor.name.substring(0, 2);
+    const displayName = doctor?.name || user.name;
+    const nameParts = displayName.trim().split(' ');
+    const initials =
+        nameParts.length >= 2
+            ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
+            : displayName.substring(0, 2);
 
-        return {
-            id: doctor.id,
-            userId: doctor.user_id,
-            name: doctor.name,
-            email: user?.email ?? '',
-            initials: initials.toUpperCase(),
-            crm: doctor.crm,
-            position: doctor.position,
-        };
+    const roleLabel = {
+        DOCTOR: 'Médico',
+        NURSE: 'Enfermeiro(a)',
+        ADMIN: 'Administrador',
+        MANAGER: 'Gestor',
+    }[user.role] ?? 'Profissional';
+
+    return {
+        id: doctor?.id ?? 0,
+        userId: String(user.id),
+        name: displayName,
+        email: user.email,
+        initials: initials.toUpperCase(),
+        crm: doctor?.crm ?? '-',
+        position: doctor?.position ?? roleLabel,
+    };
+} catch (error) {
+    console.error('Erro ao buscar perfil do médico:', error);
+    return null;
+}
+}
+
+export async function updateDoctorProfile(data: { name: string; email: string; crm: string; position: string }): Promise<{ success: boolean; error?: string }> {
+    try {
+        const cookieStore = await cookies();
+        const sessionCookie = cookieStore.get('session')?.value;
+        const payload = await verifySession(sessionCookie);
+        if (!payload?.userId) return { success: false, error: 'Não autorizado.' };
+
+        const userId = Number(payload.userId);
+
+        const existingEmail = await prisma.user.findUnique({ where: { email: data.email } });
+        if (existingEmail && existingEmail.id !== userId) {
+            return { success: false, error: 'E-mail já está em uso por outra conta.' };
+        }
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: { name: data.name, email: data.email },
+        });
+
+        await prisma.doctor.upsert({
+            where: { user_id: String(userId) },
+            update: {
+                name: data.name,
+                crm: data.crm,
+                position: data.position,
+            },
+            create: {
+                user_id: String(userId),
+                name: data.name,
+                crm: data.crm,
+                position: data.position,
+            },
+        });
+
+        return { success: true };
     } catch (error) {
-        console.error('Erro ao buscar perfil do médico:', error);
-        return null;
+        console.error('Erro ao atualizar perfil:', error);
+        return { success: false, error: 'Falha ao atualizar o perfil.' };
     }
 }
 
@@ -392,10 +441,23 @@ export type DoctorHospital = {
 
 export async function getDoctorHospitals(): Promise<DoctorHospital[]> {
     try {
+        const cookieStore = await cookies();
+        const sessionCookie = cookieStore.get('session')?.value;
+        const payload = await verifySession(sessionCookie);
+
+        if (!payload?.userId) return [];
+        const userId = Number(payload.userId);
+
         const hospitals = await prisma.hospital.findMany({
+            where: {
+                hospital_users: {
+                    some: { user_id: userId }
+                }
+            },
             include: { beds: { select: { status: true } } },
             orderBy: { name: 'asc' },
         });
+
         return hospitals.map(h => ({
             id: h.id,
             name: h.name,

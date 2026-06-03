@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
     Activity, ArrowRight, Building2, CalendarCheck, ChevronLeft, ChevronRight,
     ClipboardList, ExternalLink, LayoutDashboard, Loader2, MapPin,
-    Search, Stethoscope, TrendingUp, Users, X, Zap,
+    Search, Stethoscope, TrendingUp, Users, X, Zap, UserCircle
 } from 'lucide-react';
 import {
     getDoctorProfileForPanel,
@@ -25,8 +25,6 @@ import EvolutionDetailModal from './components/EvolutionDetailModal';
 
 const TABS = [
     { id: 'overview',   label: 'Visão Geral',    icon: LayoutDashboard },
-    { id: 'hospitals',  label: 'Meus Hospitais', icon: Building2       },
-    { id: 'history',    label: 'Histórico',       icon: ClipboardList   },
     { id: 'quick',      label: 'Acesso Rápido',  icon: Zap             },
 ] as const;
 
@@ -146,314 +144,6 @@ function TabOverview({
     );
 }
 
-// ─── Tab 2: Meus Hospitais ────────────────────────────────────────────────────
-
-function statusFromPct(pct: number): 'stable' | 'warning' | 'critical' {
-    if (pct >= 90) return 'critical';
-    if (pct >= 70) return 'warning';
-    return 'stable';
-}
-
-const HOSPITAL_COLORS = {
-    stable:   { icon: 'bg-emerald-100 text-emerald-600', bar: 'bg-emerald-500', badge: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-    warning:  { icon: 'bg-amber-100  text-amber-600',   bar: 'bg-amber-400',   badge: 'bg-amber-100  text-amber-700  border-amber-200'  },
-    critical: { icon: 'bg-rose-100   text-rose-600',    bar: 'bg-rose-500',    badge: 'bg-rose-100   text-rose-700   border-rose-200'   },
-};
-const HOSPITAL_LABELS = { stable: 'Normal', warning: 'Atenção', critical: 'Crítico' };
-
-function HospitalCard({ hospital, onAccess }: { hospital: DoctorHospital; onAccess: () => void }) {
-    const pct = hospital.totalBeds > 0
-        ? Math.round((hospital.occupiedBeds / hospital.totalBeds) * 100)
-        : 0;
-    const status = statusFromPct(pct);
-    const colors = HOSPITAL_COLORS[status];
-
-    return (
-        <div className="bg-white border border-slate-100 rounded-2xl p-4 sm:p-5 hover:border-blue-100 hover:shadow-sm transition-all">
-            <div className="flex items-start gap-3 mb-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${colors.icon}`}>
-                    <Building2 className="w-5 h-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                        <p className="font-bold text-slate-800 truncate">{hospital.name}</p>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${colors.badge}`}>
-                            {HOSPITAL_LABELS[status]}
-                        </span>
-                    </div>
-                    <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                        <MapPin className="w-3 h-3 shrink-0" />
-                        <span className="truncate">{hospital.address}</span>
-                    </p>
-                </div>
-            </div>
-
-            <div className="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <div className="flex justify-between text-xs font-medium text-slate-600 mb-2">
-                    <span>Ocupação</span>
-                    <span className="font-bold">{hospital.occupiedBeds}/{hospital.totalBeds} leitos</span>
-                </div>
-                <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${colors.bar}`} style={{ width: `${pct}%` }} />
-                </div>
-                <div className="flex justify-between text-[10px] text-slate-400 mt-1.5">
-                    <span>{hospital.vacantBeds} livres</span>
-                    <span>{pct}% ocupado</span>
-                </div>
-            </div>
-
-            <button
-                onClick={onAccess}
-                className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm shadow-blue-200"
-            >
-                <LayoutDashboard className="w-3.5 h-3.5" /> Acessar Dashboard
-            </button>
-        </div>
-    );
-}
-
-function TabHospitals({ hospitals, onAccess }: { hospitals: DoctorHospital[]; onAccess: (id: number) => void }) {
-    const [search, setSearch] = useState('');
-    const filtered = hospitals.filter(h =>
-        h.name.toLowerCase().includes(search.toLowerCase()) ||
-        h.address.toLowerCase().includes(search.toLowerCase())
-    );
-
-    return (
-        <div className="space-y-4">
-            <div className="relative">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                    type="text"
-                    placeholder="Buscar por nome ou endereço..."
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                />
-                {search && (
-                    <button onClick={() => setSearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                        <X className="w-4 h-4" />
-                    </button>
-                )}
-            </div>
-
-            {filtered.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-slate-400 bg-white rounded-2xl border border-slate-100">
-                    <Building2 className="w-10 h-10 mb-3 opacity-30" />
-                    <p className="font-semibold text-slate-600">
-                        {search ? 'Nenhuma unidade encontrada' : 'Nenhuma unidade cadastrada'}
-                    </p>
-                    <p className="text-sm mt-1 text-slate-400">
-                        {search ? 'Tente outro termo.' : 'Solicite ao gestor para cadastrar unidades.'}
-                    </p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {filtered.map(h => (
-                        <HospitalCard key={h.id} hospital={h} onAccess={() => onAccess(h.id)} />
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
-
-// ─── Tab 3: Histórico de Evolução ─────────────────────────────────────────────
-
-const PERIOD_OPTIONS = [
-    { label: '7 dias',  value: 7   },
-    { label: '30 dias', value: 30  },
-    { label: '90 dias', value: 90  },
-];
-
-function TabHistory({ onEvoClick }: { onEvoClick: (evo: DoctorEvolution) => void }) {
-    const [evolutions, setEvolutions] = useState<DoctorEvolution[]>([]);
-    const [total, setTotal]           = useState(0);
-    const [page, setPage]             = useState(1);
-    const [search, setSearch]         = useState('');
-    const [period, setPeriod]         = useState(30);
-    const [loading, setLoading]       = useState(true);
-
-    const PAGE_SIZE = 15;
-    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-
-    const load = useCallback(async (p: number, s: string, days: number) => {
-        setLoading(true);
-        const res = await getDoctorEvolutions(p, s, days);
-        setEvolutions(res.data);
-        setTotal(res.total);
-        setLoading(false);
-    }, []);
-
-    useEffect(() => { load(page, search, period); }, [page, period, load]);
-
-    const handleSearch = (val: string) => {
-        setSearch(val);
-        setPage(1);
-        load(1, val, period);
-    };
-
-    const handlePeriod = (val: number) => {
-        setPeriod(val);
-        setPage(1);
-        load(1, search, val);
-    };
-
-    return (
-        <div className="space-y-4">
-            {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder="Buscar por paciente..."
-                        defaultValue={search}
-                        onChange={e => handleSearch(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                    />
-                </div>
-                <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 shrink-0">
-                    {PERIOD_OPTIONS.map(opt => (
-                        <button
-                            key={opt.value}
-                            onClick={() => handlePeriod(opt.value)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                                period === opt.value
-                                    ? 'bg-blue-600 text-white shadow-sm'
-                                    : 'text-slate-500 hover:bg-slate-50'
-                            }`}
-                        >
-                            {opt.label}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Table */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                    <div>
-                        <h3 className="text-base font-bold text-slate-900">Evoluções Registradas</h3>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                            {total} registro{total !== 1 ? 's' : ''} nos últimos {period} dias
-                        </p>
-                    </div>
-                </div>
-
-                {loading ? (
-                    <div className="flex items-center justify-center py-16 gap-3 text-slate-400">
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        <span className="text-sm">Carregando...</span>
-                    </div>
-                ) : evolutions.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-                        <ClipboardList className="w-8 h-8 mb-2 opacity-30" />
-                        <p className="text-sm font-medium">Nenhuma evolução encontrada</p>
-                        <p className="text-xs mt-1">Tente ampliar o período ou limpar a busca.</p>
-                    </div>
-                ) : (
-                    <>
-                        {/* Desktop table */}
-                        <div className="hidden sm:block overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-slate-100 bg-slate-50/60">
-                                        <th className="text-left px-6 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Paciente</th>
-                                        <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Leito</th>
-                                        <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Data</th>
-                                        <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Hora</th>
-                                        <th className="px-4 py-3" />
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {evolutions.map(evo => {
-                                        const d = new Date(evo.createdAt);
-                                        return (
-                                            <tr key={evo.id} className="hover:bg-slate-50/60 transition-colors">
-                                                <td className="px-6 py-3.5 font-medium text-slate-800 truncate max-w-[200px]">
-                                                    {evo.patientName}
-                                                </td>
-                                                <td className="px-4 py-3.5 text-slate-500">{evo.bedLabel}</td>
-                                                <td className="px-4 py-3.5 text-slate-500">
-                                                    {d.toLocaleDateString('pt-BR')}
-                                                </td>
-                                                <td className="px-4 py-3.5 text-slate-500">
-                                                    {d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                                </td>
-                                                <td className="px-4 py-3.5 text-right">
-                                                    <button
-                                                        onClick={() => onEvoClick(evo)}
-                                                        className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
-                                                    >
-                                                        Ver <ExternalLink className="w-3 h-3" />
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {/* Mobile list */}
-                        <div className="sm:hidden divide-y divide-slate-50">
-                            {evolutions.map(evo => {
-                                const d = new Date(evo.createdAt);
-                                return (
-                                    <button
-                                        key={evo.id}
-                                        onClick={() => onEvoClick(evo)}
-                                        className="w-full flex items-start gap-3 p-4 hover:bg-slate-50 text-left transition-colors"
-                                    >
-                                        <div className="p-2 bg-blue-100 text-blue-600 rounded-lg shrink-0">
-                                            <Stethoscope className="w-4 h-4" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-semibold text-slate-800 truncate">{evo.patientName}</p>
-                                            <p className="text-xs text-slate-500">{evo.bedLabel}</p>
-                                            <p className="text-[11px] text-slate-400 mt-0.5">
-                                                {d.toLocaleDateString('pt-BR')} às{' '}
-                                                {d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                            </p>
-                                        </div>
-                                        <ArrowRight className="w-4 h-4 text-slate-300 shrink-0 mt-1" />
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        {/* Pagination */}
-                        {totalPages > 1 && (
-                            <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
-                                <p className="text-xs text-slate-400">
-                                    Página {page} de {totalPages}
-                                </p>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => setPage(p => Math.max(1, p - 1))}
-                                        disabled={page === 1}
-                                        className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                                    >
-                                        <ChevronLeft className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                        disabled={page === totalPages}
-                                        className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                                    >
-                                        <ChevronRight className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </>
-                )}
-            </div>
-        </div>
-    );
-}
-
 // ─── Tab 4: Acesso Rápido ─────────────────────────────────────────────────────
 
 function TabQuick({
@@ -493,17 +183,17 @@ function TabQuick({
             </div>
 
             {/* Quick action links */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <button
-                    onClick={() => router.push('/hospitals')}
+                    onClick={() => router.push('/medico/hospitals')}
                     className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 hover:border-blue-100 hover:shadow-sm transition-all text-left"
                 >
                     <div className="p-3 bg-blue-50 text-blue-600 rounded-xl shrink-0">
-                        <Building2 className="w-5 h-5" />
+                        <Users className="w-5 h-5" />
                     </div>
                     <div>
-                        <p className="text-sm font-bold text-slate-800">Todas as Unidades</p>
-                        <p className="text-xs text-slate-500 mt-0.5">Ver e selecionar hospitais</p>
+                        <p className="text-sm font-bold text-slate-800">Meus Hospitais</p>
+                        <p className="text-xs text-slate-500 mt-0.5">Hospitais designados a você</p>
                     </div>
                     <ArrowRight className="w-4 h-4 text-slate-300 ml-auto shrink-0" />
                 </button>
@@ -516,8 +206,22 @@ function TabQuick({
                         <ClipboardList className="w-5 h-5" />
                     </div>
                     <div>
-                        <p className="text-sm font-bold text-slate-800">Histórico Completo</p>
+                        <p className="text-sm font-bold text-slate-800">Histórico de Evoluções</p>
                         <p className="text-xs text-slate-500 mt-0.5">Todas as suas evoluções</p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-slate-300 ml-auto shrink-0" />
+                </button>
+
+                <button
+                    onClick={() => router.push('/medico/perfil')}
+                    className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 hover:border-blue-100 hover:shadow-sm transition-all text-left"
+                >
+                    <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl shrink-0">
+                        <UserCircle className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-bold text-slate-800">Meus Dados</p>
+                        <p className="text-xs text-slate-500 mt-0.5">Gerenciar perfil e registro</p>
                     </div>
                     <ArrowRight className="w-4 h-4 text-slate-300 ml-auto shrink-0" />
                 </button>

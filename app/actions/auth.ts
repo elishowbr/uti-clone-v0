@@ -31,11 +31,15 @@ export async function login(prevState: any, formData: FormData) {
 
     const user = await prisma.user.findUnique({
         where: { email },
-        select: { id: true, password: true, role: true },
+        select: { id: true, password: true, role: true, active: true },
     });
 
     if (!user || !user.password) {
         return { error: "Credenciais inválidas" };
+    }
+
+    if (!user.active) {
+        return { error: "Sua conta foi desativada. Fale com a administração." };
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
