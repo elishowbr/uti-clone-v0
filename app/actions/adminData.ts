@@ -301,8 +301,7 @@ export async function createHospital(data: {
         });
 
         if (bedCount > 0) {
-            const agg = await prisma.bed.aggregate({ _max: { bed_number: true } });
-            const startNumber = (agg._max.bed_number ?? 0) + 1;
+            const startNumber = 1;
 
             await prisma.bed.createMany({
                 data: Array.from({ length: bedCount }, (_, i) => ({
@@ -330,6 +329,9 @@ export async function updateHospital(
         name: string;
         address: string;
         description?: string;
+        bedsToUpdate?: { id: number; label: string }[];
+        bedsToAdd?: { label: string }[];
+        bedsToDelete?: number[];
     }
 ): Promise<{ success: boolean; error?: string }> {
     try {
@@ -345,13 +347,53 @@ export async function updateHospital(
             return { success: false, error: 'Hospital não encontrado.' };
         }
 
-        await prisma.hospital.update({
-            where: { id },
-            data: {
-                name: data.name.trim(),
-                address: data.address.trim(),
-                description: data.description?.trim() || null,
-            },
+        await prisma.$transaction(async (tx) => {
+            await tx.hospital.update({
+                where: { id },
+                data: {
+                    name: data.name.trim(),
+                    address: data.address.trim(),
+                    description: data.description?.trim() || null,
+                },
+            });
+
+            if (data.bedsToDelete && data.bedsToDelete.length > 0) {
+                // Ensure they are vacant before deleting
+                await tx.bed.deleteMany({
+                    where: { id: { in: data.bedsToDelete }, hospital_id: id, status: 'VACANT' }
+                });
+            }
+
+            if (data.bedsToUpdate && data.bedsToUpdate.length > 0) {
+                for (const bed of data.bedsToUpdate) {
+                    await tx.bed.update({
+                        where: { id: bed.id },
+                        data: { label: bed.label.trim() }
+                    });
+                }
+            }
+
+            if (data.bedsToAdd && data.bedsToAdd.length > 0) {
+                const existingBeds = await tx.bed.findMany({
+                    where: { hospital_id: id },
+                    select: { bed_number: true }
+                });
+                let nextNum = existingBeds.length > 0
+                    ? Math.max(...existingBeds.map(b => b.bed_number)) + 1
+                    : 1;
+
+                for (const bed of data.bedsToAdd) {
+                    await tx.bed.create({
+                        data: {
+                            hospital_id: id,
+                            bed_number: nextNum++,
+                            label: bed.label.trim() || `Leito ${nextNum - 1 < 10 ? '0' + (nextNum - 1) : (nextNum - 1)}`,
+                            type: 'UTI Geral',
+                            status: 'VACANT'
+                        }
+                    });
+                }
+            }
         });
 
         revalidatePath('/admin');
@@ -623,6 +665,8 @@ export type HospitalData = {
     totalBeds: number;
     occupiedBeds: number;
     vacantBeds: number;
+    description: string | null;
+    beds: { id: number; label: string | null; status: string; bed_number: number }[];
 };
 
 export type HospitalStaffMember = {
@@ -636,16 +680,18 @@ export async function getHospitals(): Promise<HospitalData[]> {
     try {
         const hospitals = await prisma.hospital.findMany({
             where: { active: true },
-            include: { beds: { select: { status: true } } },
+            include: { beds: { select: { id: true, label: true, status: true, bed_number: true }, orderBy: { bed_number: 'asc' } } },
             orderBy: { name: 'asc' },
         });
         return hospitals.map(h => ({
             id: h.id,
             name: h.name,
             address: h.address,
+            description: h.description,
             totalBeds: h.beds.length,
             occupiedBeds: h.beds.filter(b => b.status === 'OCCUPIED').length,
             vacantBeds: h.beds.filter(b => b.status === 'VACANT').length,
+            beds: h.beds,
         }));
     } catch (error) {
         console.error('Erro ao buscar hospitais:', error);

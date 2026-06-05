@@ -117,7 +117,7 @@ model Patient {
 // ============================================
 model Bed {
   id         Int     @id @default(autoincrement())
-  bed_number Int     @unique
+  bed_number Int
   label      String? // Ex: "Leito 01"
   type       String? // Ex: "UTI Geral"
 
@@ -138,6 +138,7 @@ model Bed {
   updated_at DateTime @updatedAt
 
   @@index([hospital_id])
+  @@unique([hospital_id, bed_number])
   @@map("beds")
 }
 
