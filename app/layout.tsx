@@ -13,8 +13,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "UTI Care",
-  description: "Sistema de gerenciamento de clínicas de UTI, desenvolvido para facilitar o dia a dia dos profissionais de saúde.",
+  title: {
+    template: "%s | UTI Care",
+    default: "UTI Care - Gestão Inteligente de UTI",
+  },
+  description: "Sistema avançado de gerenciamento de clínicas de UTI e leitos hospitalares. Desenvolvido para otimizar o dia a dia dos profissionais de saúde e garantir o melhor cuidado aos pacientes.",
+  applicationName: "UTI Care",
+  authors: [{ name: "UTI Care Team" }],
+  keywords: ["UTI", "Gestão Hospitalar", "Controle de Leitos", "Saúde", "Gestão de Pacientes", "Sistema Médico"],
 };
 
 export default function RootLayout({
@@ -23,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
