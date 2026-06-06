@@ -31,7 +31,7 @@ export async function getDashboardData() {
 // 2. Criar um novo Leito
 export async function createBed(bedNumber: number) {
     try {
-        const existing = await prisma.bed.findUnique({ where: { bed_number: bedNumber } });
+        const existing = await prisma.bed.findFirst({ where: { bed_number: bedNumber, hospital_id: null } });
         if (existing) return { success: false, error: 'Número de leito já existe' };
 
         await prisma.bed.create({
@@ -174,7 +174,7 @@ export async function getHospitalDashboardData(hospitalId: number) {
     return beds;
 }
 
-export async function createHospitalBed(hospitalId: number) {
+export async function createHospitalBed(hospitalId: number, customLabel?: string) {
     try {
         const existingBeds = await prisma.bed.findMany({
             where: { hospital_id: hospitalId },
@@ -187,17 +187,34 @@ export async function createHospitalBed(hospitalId: number) {
         await prisma.bed.create({
             data: {
                 bed_number: nextNum,
-                label: `Leito ${nextNum < 10 ? '0' + nextNum : nextNum}`,
+                label: customLabel?.trim() || `Leito ${nextNum < 10 ? '0' + nextNum : nextNum}`,
                 type: 'UTI Geral',
                 status: 'VACANT',
                 hospital_id: hospitalId,
             },
         });
         revalidatePath(`/${hospitalId}/dashboard`);
+        revalidatePath('/admin/hospitais');
         return { success: true };
     } catch (error) {
         console.error('Erro ao criar leito:', error);
         return { success: false, error: 'Erro ao criar leito' };
+    }
+}
+
+export async function updateBedLabel(bedId: number, label: string) {
+    try {
+        if (!label.trim()) return { success: false, error: 'O nome do leito não pode estar vazio.' };
+        await prisma.bed.update({
+            where: { id: bedId },
+            data: { label: label.trim() }
+        });
+        revalidatePath('/admin/hospitais');
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Erro ao atualizar leito:', error);
+        return { success: false, error: 'Erro ao atualizar o leito.' };
     }
 }
 

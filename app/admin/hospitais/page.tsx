@@ -12,6 +12,11 @@ import {
     updateHospital,
     type HospitalData,
 } from "../../actions/adminData";
+import {
+    createHospitalBed,
+    updateBedLabel,
+    deleteHospitalBed
+} from "../../actions/bedManagement";
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 
@@ -52,12 +57,25 @@ function HospitalSection({ onToast }: { onToast: (msg: string, type?: "success" 
     const [submitting, setSubmitting] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
 
+    // Bed editing state (batch mode)
+    type LocalBed = { id?: number; localId?: string; label: string; status: string; bed_number: number; isDeleted?: boolean };
+    const [localBeds, setLocalBeds] = useState<LocalBed[]>([]);
+    
+    // For inline editing before saving to the local array
+    const [editingBedIndex, setEditingBedIndex] = useState<number | null>(null);
+    const [editingBedLabel, setEditingBedLabel] = useState("");
+    
+    const [addingBed, setAddingBed] = useState(false);
+    const [newBedLabel, setNewBedLabel] = useState("");
+
     const load = useCallback(async () => {
         setHospitals(await getHospitals());
         setLoading(false);
     }, []);
 
     useEffect(() => { load(); }, [load]);
+
+    const activeHospital = isEditing ? hospitals.find(h => h.id === isEditing) : null;
 
     const resetForm = () => {
         setIsEditing(null);
@@ -66,19 +84,61 @@ function HospitalSection({ onToast }: { onToast: (msg: string, type?: "success" 
         setDescription("");
         setBedCount("");
         setFormError(null);
+        setLocalBeds([]);
+        setEditingBedIndex(null);
+        setAddingBed(false);
     };
 
     const handleEditClick = (h: HospitalData) => {
-        // Fetch description if needed, or we might need to update HospitalData type.
-        // For now, we will use an empty description as we don't return it in HospitalData currently.
-        // If we want to support description, we should update getHospitals to return it.
         setIsEditing(h.id);
         setName(h.name);
         setAddress(h.address);
-        setDescription(""); // Since description is not in HospitalData by default, we start empty
-        setBedCount(""); // We don't allow editing bed count, so keep it empty
+        setDescription(h.description || "");
+        setBedCount("");
         setFormError(null);
+        setLocalBeds(h.beds ? h.beds.map(b => ({ ...b, label: b.label || `Leito ${b.bed_number}` })) : []);
+        setEditingBedIndex(null);
+        setAddingBed(false);
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleUpdateLocalBedLabel = (index: number) => {
+        if (!editingBedLabel.trim()) return;
+        const newBeds = [...localBeds];
+        newBeds[index].label = editingBedLabel.trim();
+        setLocalBeds(newBeds);
+        setEditingBedIndex(null);
+    };
+
+    const handleDeleteLocalBed = (index: number) => {
+        const bed = localBeds[index];
+        if (bed.status === 'OCCUPIED') {
+            onToast("Não é possível excluir um leito ocupado.", "error");
+            return;
+        }
+        if (!confirm("Excluir este leito?")) return;
+        
+        const newBeds = [...localBeds];
+        if (newBeds[index].id) {
+            newBeds[index].isDeleted = true;
+        } else {
+            // It was a newly added bed, just remove it from array
+            newBeds.splice(index, 1);
+        }
+        setLocalBeds(newBeds);
+    };
+
+    const handleAddLocalBed = () => {
+        const newBeds = [...localBeds];
+        newBeds.push({
+            localId: Math.random().toString(36).substring(7),
+            label: newBedLabel.trim() || `Leito Novo`,
+            status: 'VACANT',
+            bed_number: 0 // Will be calculated by server
+        });
+        setLocalBeds(newBeds);
+        setAddingBed(false);
+        setNewBedLabel("");
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -88,14 +148,22 @@ function HospitalSection({ onToast }: { onToast: (msg: string, type?: "success" 
         setSubmitting(true);
         
         if (isEditing) {
+            // Compute arrays for batch update
+            const bedsToUpdate = localBeds.filter(b => b.id && !b.isDeleted).map(b => ({ id: b.id as number, label: b.label }));
+            const bedsToAdd = localBeds.filter(b => !b.id && !b.isDeleted).map(b => ({ label: b.label }));
+            const bedsToDelete = localBeds.filter(b => b.id && b.isDeleted).map(b => b.id as number);
+
             const res = await updateHospital(isEditing, {
                 name: name.trim(), address: address.trim(),
                 description: description.trim() || undefined,
+                bedsToUpdate,
+                bedsToAdd,
+                bedsToDelete
             });
             setSubmitting(false);
             if (res.success) {
                 resetForm();
-                onToast(`Hospital atualizado com sucesso.`);
+                onToast(`Hospital e leitos atualizados com sucesso.`);
                 load();
             } else {
                 setFormError(res.error ?? "Erro desconhecido.");
@@ -170,13 +238,15 @@ function HospitalSection({ onToast }: { onToast: (msg: string, type?: "success" 
                             <input type="text" value={description} onChange={e => setDescription(e.target.value)}
                                 placeholder="Ex: UTI Adulto" className={INPUT} disabled={submitting} />
                         </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
-                                Quantidade de Leitos {isEditing ? <span className="font-normal normal-case text-slate-400">(não editável aqui)</span> : <span className="font-normal normal-case text-slate-400">(cria automaticamente)</span>}
-                            </label>
-                            <input type="number" min="0" max="200" value={bedCount} onChange={e => setBedCount(e.target.value)}
-                                placeholder={isEditing ? "—" : "Ex: 10"} className={INPUT} disabled={submitting || isEditing !== null} />
-                        </div>
+                        {!isEditing && (
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                                    Quantidade de Leitos Inicial <span className="font-normal normal-case text-slate-400">(cria automaticamente)</span>
+                                </label>
+                                <input type="number" min="0" max="200" value={bedCount} onChange={e => setBedCount(e.target.value)}
+                                    placeholder="Ex: 10" className={INPUT} disabled={submitting} />
+                            </div>
+                        )}
                     </div>
 
                     {formError && (
@@ -185,12 +255,70 @@ function HospitalSection({ onToast }: { onToast: (msg: string, type?: "success" 
                         </div>
                     )}
 
-                    <button type="submit" disabled={submitting}
-                        className={`flex items-center gap-2 ${isEditing ? "bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 shadow-amber-200" : "bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 shadow-blue-200"} text-white font-bold text-sm py-2.5 px-5 rounded-xl transition-all shadow-md`}>
-                        {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : isEditing ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                        {submitting ? "Salvando..." : isEditing ? "Salvar Alterações" : "Cadastrar Hospital"}
-                    </button>
+                    <div className="flex justify-start">
+                        <button type="submit" disabled={submitting}
+                            className={`flex items-center gap-2 ${isEditing ? "bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 shadow-amber-200" : "bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 shadow-blue-200"} text-white font-bold text-sm py-2.5 px-5 rounded-xl transition-all shadow-md`}>
+                            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : isEditing ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                            {submitting ? "Salvando..." : isEditing ? "Salvar Hospital" : "Cadastrar Hospital"}
+                        </button>
+                    </div>
                 </form>
+
+                {isEditing && activeHospital && (
+                    <div className="border-t border-slate-100 px-6 py-5 bg-slate-50/50 rounded-b-2xl">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                <Bed className="w-4 h-4 text-slate-400" /> Leitos do Hospital (Alterações Salvas com o Hospital)
+                            </h3>
+                            {!addingBed && (
+                                <button type="button" onClick={() => setAddingBed(true)} className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors">
+                                    <Plus className="w-3.5 h-3.5" /> Adicionar Leito
+                                </button>
+                            )}
+                        </div>
+
+                        {addingBed && (
+                            <div className="flex items-center gap-2 bg-white p-3 rounded-xl border border-blue-100 shadow-sm mb-4">
+                                <input type="text" value={newBedLabel} onChange={e => setNewBedLabel(e.target.value)} placeholder="Nome do Leito (Opcional, ex: 3A)" className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500" autoFocus />
+                                <button type="button" onClick={handleAddLocalBed} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">Confirmar</button>
+                                <button type="button" onClick={() => { setAddingBed(false); setNewBedLabel(""); }} className="text-slate-400 hover:text-slate-600 p-2"><X className="w-5 h-5" /></button>
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {localBeds.filter(b => !b.isDeleted).map((bed, index) => (
+                                <div key={bed.id ?? bed.localId} className="bg-white border border-slate-200 p-3 rounded-xl flex flex-col gap-2 shadow-sm group">
+                                    {editingBedIndex === index ? (
+                                        <div className="flex items-center gap-2">
+                                            <input type="text" value={editingBedLabel} onChange={e => setEditingBedLabel(e.target.value)} className="flex-1 p-1.5 bg-slate-50 border border-slate-200 rounded-md text-sm outline-none focus:border-blue-500" autoFocus />
+                                            <button type="button" onClick={() => handleUpdateLocalBedLabel(index)} className="text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-md"><CheckCircle2 className="w-4 h-4" /></button>
+                                            <button type="button" onClick={() => setEditingBedIndex(null)} className="text-slate-400 hover:bg-slate-100 p-1.5 rounded-md"><X className="w-4 h-4" /></button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center justify-between">
+                                            <span className={`font-bold text-sm ${!bed.id ? "text-blue-600" : "text-slate-800"}`}>{bed.label || `Leito ${bed.bed_number}`}</span>
+                                            <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button type="button" onClick={() => { setEditingBedIndex(index); setEditingBedLabel(bed.label || `Leito ${bed.bed_number}`); }} className="p-1 text-slate-400 hover:text-amber-600" title="Editar Nome"><Edit2 className="w-3.5 h-3.5" /></button>
+                                                {bed.status === 'VACANT' && (
+                                                    <button type="button" onClick={() => handleDeleteLocalBed(index)} className="p-1 text-slate-400 hover:text-red-600" title="Excluir Leito"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="flex items-center gap-2 mt-auto pt-1">
+                                        <span className={`w-2 h-2 rounded-full ${bed.status === 'OCCUPIED' ? 'bg-rose-500' : bed.status === 'CLEANING' ? 'bg-amber-400' : 'bg-emerald-500'}`} />
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                            {bed.status === 'OCCUPIED' ? 'Ocupado' : bed.status === 'CLEANING' ? 'Em Limpeza' : 'Livre'}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        {localBeds.filter(b => !b.isDeleted).length === 0 && (
+                            <p className="text-sm text-slate-500 text-center py-4">Nenhum leito ativo para edição.</p>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Hospital list */}
